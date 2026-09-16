@@ -1,0 +1,407 @@
+[
+  {
+    "source": "references\\purchased\\KayKit_Adventurers_2.0_EXTRA\\Characters\\gltf\\Ranger.glb",
+    "runtime": "public\\assets\\kaykit\\characters\\Ranger.glb",
+    "bytes": 484712
+  },
+  {
+    "source": "references\\purchased\\KayKit_Adventurers_2.0_EXTRA\\Characters\\gltf\\Knight.glb",
+    "runtime": "public\\assets\\kaykit\\characters\\Knight.glb",
+    "bytes": 341688
+  },
+  {
+    "source": "references\\purchased\\KayKit_Adventurers_2.0_EXTRA\\Characters\\gltf\\Druid.glb",
+    "runtime": "public\\assets\\kaykit\\characters\\Druid.glb",
+    "bytes": 465800
+  },
+  {
+    "source": "references\\purchased\\KayKit_Adventurers_2.0_EXTRA\\Characters\\gltf\\Engineer.glb",
+    "runtime": "public\\assets\\kaykit\\characters\\Engineer.glb",
+    "bytes": 455468
+  },
+  {
+    "source": "references\\purchased\\KayKit_Skeletons_1.1_EXTRA\\characters\\gltf\\Skeleton_Warrior.glb",
+    "runtime": "public\\assets\\kaykit\\characters\\Skeleton_Warrior.glb",
+    "bytes": 371728
+  },
+  {
+    "source": "references\\purchased\\KayKit_Skeletons_1.1_EXTRA\\characters\\gltf\\Skeleton_Rogue.glb",
+    "runtime": "public\\assets\\kaykit\\characters\\Skeleton_Rogue.glb",
+    "bytes": 335420
+  },
+  {
+    "source": "references\\purchased\\KayKit_Skeletons_1.1_EXTRA\\characters\\gltf\\Skeleton_Mage.glb",
+    "runtime": "public\\assets\\kaykit\\characters\\Skeleton_Mage.glb",
+    "bytes": 269920
+  },
+  {
+    "source": "references\\purchased\\KayKit_Skeletons_1.1_EXTRA\\characters\\gltf\\Skeleton_Golem.glb",
+    "runtime": "public\\assets\\kaykit\\characters\\Skeleton_Golem.glb",
+    "bytes": 397816
+  },
+  {
+    "source": "references\\purchased\\KayKit_Skeletons_1.1_EXTRA\\characters\\gltf\\Necromancer.glb",
+    "runtime": "public\\assets\\kaykit\\characters\\Necromancer.glb",
+    "bytes": 409184
+  },
+  {
+    "source": "references\\purchased\\KayKit_Adventurers_2.0_EXTRA\\Animations\\gltf\\Rig_Medium\\Rig_Medium_General.glb",
+    "runtime": "public\\assets\\kaykit\\animations\\Rig_Medium_General.glb",
+    "bytes": 828240
+  },
+  {
+    "source": "references\\purchased\\KayKit_Adventurers_2.0_EXTRA\\Animations\\gltf\\Rig_Medium\\Rig_Medium_MovementBasic.glb",
+    "runtime": "public\\assets\\kaykit\\animations\\Rig_Medium_MovementBasic.glb",
+    "bytes": 689624
+  },
+  {
+    "source": "references\\purchased\\KayKit_Adventurers_2.0_EXTRA\\Animations\\gltf\\Rig_Large\\Rig_Large_General.glb",
+    "runtime": "public\\assets\\kaykit\\animations\\Rig_Large_General.glb",
+    "bytes": 700336
+  },
+  {
+    "source": "references\\purchased\\KayKit_Adventurers_2.0_EXTRA\\Animations\\gltf\\Rig_Large\\Rig_Large_MovementBasic.glb",
+    "runtime": "public\\assets\\kaykit\\animations\\Rig_Large_MovementBasic.glb",
+    "bytes": 584676
+  },
+  {
+    "source": "references\\purchased\\KayKit_Adventurers_2.0_EXTRA\\Assets\\gltf\\crossbow_2handed.gltf",
+    "runtime": "public\\assets\\kaykit\\weapons\\crossbow_2handed.gltf",
+    "bytes": 3083
+  },
+  {
+    "source": "references\\purchased\\KayKit_Adventurers_2.0_EXTRA\\Assets\\gltf\\crossbow_2handed.bin",
+    "runtime": "public\\assets\\kaykit\\weapons\\crossbow_2handed.bin",
+    "bytes": 34896
+  },
+  {
+    "source": "references\\purchased\\KayKit_Adventurers_2.0_EXTRA\\Assets\\gltf\\rogue_texture.png",
+    "runtime": "public\\assets\\kaykit\\weapons\\rogue_texture.png",
+    "bytes": 15026
+  },
+  {
+    "source": "references\\purchased\\KayKit_Adventurers_2.0_EXTRA\\Assets\\gltf\\bow_withString.gltf",
+    "runtime": "public\\assets\\kaykit\\weapons\\bow_withString.gltf",
+    "bytes": 4326
+  },
+  {
+    "source": "references\\purchased\\KayKit_Adventurers_2.0_EXTRA\\Assets\\gltf\\bow_withString.bin",
+    "runtime": "public\\assets\\kaykit\\weapons\\bow_withString.bin",
+    "bytes": 49016
+  },
+  {
+    "source": "references\\purchased\\KayKit_Adventurers_2.0_EXTRA\\Assets\\gltf\\ranger_texture.png",
+    "runtime": "public\\assets\\kaykit\\weapons\\ranger_texture.png",
+    "bytes": 13248
+  },
+  {
+    "source": "references\\purchased\\KayKit_Adventurers_2.0_EXTRA\\Assets\\gltf\\shotgun.gltf",
+    "runtime": "public\\assets\\kaykit\\weapons\\shotgun.gltf",
+    "bytes": 3037
+  },
+  {
+    "source": "references\\purchased\\KayKit_Adventurers_2.0_EXTRA\\Assets\\gltf\\shotgun.bin",
+    "runtime": "public\\assets\\kaykit\\weapons\\shotgun.bin",
+    "bytes": 50144
+  },
+  {
+    "source": "references\\purchased\\KayKit_Adventurers_2.0_EXTRA\\Assets\\gltf\\engineer_texture.png",
+    "runtime": "public\\assets\\kaykit\\weapons\\engineer_texture.png",
+    "bytes": 16561
+  },
+  {
+    "source": "references\\purchased\\KayKit_Adventurers_2.0_EXTRA\\Assets\\gltf\\crossbow_1handed.gltf",
+    "runtime": "public\\assets\\kaykit\\weapons\\crossbow_1handed.gltf",
+    "bytes": 3083
+  },
+  {
+    "source": "references\\purchased\\KayKit_Adventurers_2.0_EXTRA\\Assets\\gltf\\crossbow_1handed.bin",
+    "runtime": "public\\assets\\kaykit\\weapons\\crossbow_1handed.bin",
+    "bytes": 25200
+  },
+  {
+    "source": "references\\purchased\\KayKit_Adventurers_2.0_EXTRA\\Assets\\gltf\\rogue_texture.png",
+    "runtime": "public\\assets\\kaykit\\weapons\\rogue_texture.png",
+    "bytes": 15026
+  },
+  {
+    "source": "references\\purchased\\KayKit_Adventurers_2.0_EXTRA\\Assets\\gltf\\druid_staff.gltf",
+    "runtime": "public\\assets\\kaykit\\weapons\\druid_staff.gltf",
+    "bytes": 3038
+  },
+  {
+    "source": "references\\purchased\\KayKit_Adventurers_2.0_EXTRA\\Assets\\gltf\\druid_staff.bin",
+    "runtime": "public\\assets\\kaykit\\weapons\\druid_staff.bin",
+    "bytes": 41380
+  },
+  {
+    "source": "references\\purchased\\KayKit_Adventurers_2.0_EXTRA\\Assets\\gltf\\druid_texture.png",
+    "runtime": "public\\assets\\kaykit\\weapons\\druid_texture.png",
+    "bytes": 15263
+  },
+  {
+    "source": "references\\purchased\\KayKit_Adventurers_2.0_EXTRA\\Assets\\gltf\\staff.gltf",
+    "runtime": "public\\assets\\kaykit\\weapons\\staff.gltf",
+    "bytes": 3046
+  },
+  {
+    "source": "references\\purchased\\KayKit_Adventurers_2.0_EXTRA\\Assets\\gltf\\staff.bin",
+    "runtime": "public\\assets\\kaykit\\weapons\\staff.bin",
+    "bytes": 18576
+  },
+  {
+    "source": "references\\purchased\\KayKit_Adventurers_2.0_EXTRA\\Assets\\gltf\\mage_texture.png",
+    "runtime": "public\\assets\\kaykit\\weapons\\mage_texture.png",
+    "bytes": 14740
+  },
+  {
+    "source": "references\\purchased\\KayKit_Adventurers_2.0_EXTRA\\Assets\\gltf\\wand.gltf",
+    "runtime": "public\\assets\\kaykit\\weapons\\wand.gltf",
+    "bytes": 3042
+  },
+  {
+    "source": "references\\purchased\\KayKit_Adventurers_2.0_EXTRA\\Assets\\gltf\\wand.bin",
+    "runtime": "public\\assets\\kaykit\\weapons\\wand.bin",
+    "bytes": 5956
+  },
+  {
+    "source": "references\\purchased\\KayKit_Adventurers_2.0_EXTRA\\Assets\\gltf\\mage_texture.png",
+    "runtime": "public\\assets\\kaykit\\weapons\\mage_texture.png",
+    "bytes": 14740
+  },
+  {
+    "source": "references\\purchased\\KayKit_Adventurers_2.0_EXTRA\\Assets\\gltf\\sword_1handed.gltf",
+    "runtime": "public\\assets\\kaykit\\weapons\\sword_1handed.gltf",
+    "bytes": 3075
+  },
+  {
+    "source": "references\\purchased\\KayKit_Adventurers_2.0_EXTRA\\Assets\\gltf\\sword_1handed.bin",
+    "runtime": "public\\assets\\kaykit\\weapons\\sword_1handed.bin",
+    "bytes": 13256
+  },
+  {
+    "source": "references\\purchased\\KayKit_Adventurers_2.0_EXTRA\\Assets\\gltf\\knight_texture.png",
+    "runtime": "public\\assets\\kaykit\\weapons\\knight_texture.png",
+    "bytes": 12914
+  },
+  {
+    "source": "references\\purchased\\KayKit_Adventurers_2.0_EXTRA\\Assets\\gltf\\sword_2handed.gltf",
+    "runtime": "public\\assets\\kaykit\\weapons\\sword_2handed.gltf",
+    "bytes": 3076
+  },
+  {
+    "source": "references\\purchased\\KayKit_Adventurers_2.0_EXTRA\\Assets\\gltf\\sword_2handed.bin",
+    "runtime": "public\\assets\\kaykit\\weapons\\sword_2handed.bin",
+    "bytes": 19912
+  },
+  {
+    "source": "references\\purchased\\KayKit_Adventurers_2.0_EXTRA\\Assets\\gltf\\knight_texture.png",
+    "runtime": "public\\assets\\kaykit\\weapons\\knight_texture.png",
+    "bytes": 12914
+  },
+  {
+    "source": "references\\purchased\\KayKit_Adventurers_2.0_EXTRA\\Assets\\gltf\\shield_round.gltf",
+    "runtime": "public\\assets\\kaykit\\weapons\\shield_round.gltf",
+    "bytes": 3075
+  },
+  {
+    "source": "references\\purchased\\KayKit_Adventurers_2.0_EXTRA\\Assets\\gltf\\shield_round.bin",
+    "runtime": "public\\assets\\kaykit\\weapons\\shield_round.bin",
+    "bytes": 12008
+  },
+  {
+    "source": "references\\purchased\\KayKit_Adventurers_2.0_EXTRA\\Assets\\gltf\\knight_texture.png",
+    "runtime": "public\\assets\\kaykit\\weapons\\knight_texture.png",
+    "bytes": 12914
+  },
+  {
+    "source": "references\\purchased\\KayKit_Skeletons_1.1_EXTRA\\assets\\gltf\\Skeleton_Blade.gltf",
+    "runtime": "public\\assets\\kaykit\\weapons\\Skeleton_Blade.gltf",
+    "bytes": 3051
+  },
+  {
+    "source": "references\\purchased\\KayKit_Skeletons_1.1_EXTRA\\assets\\gltf\\Skeleton_Blade.bin",
+    "runtime": "public\\assets\\kaykit\\weapons\\Skeleton_Blade.bin",
+    "bytes": 20056
+  },
+  {
+    "source": "references\\purchased\\KayKit_Skeletons_1.1_EXTRA\\assets\\gltf\\skeleton_texture_A.png",
+    "runtime": "public\\assets\\kaykit\\weapons\\skeleton_texture_A.png",
+    "bytes": 21277
+  },
+  {
+    "source": "references\\purchased\\KayKit_Skeletons_1.1_EXTRA\\assets\\gltf\\Skeleton_Dagger.gltf",
+    "runtime": "public\\assets\\kaykit\\weapons\\Skeleton_Dagger.gltf",
+    "bytes": 3060
+  },
+  {
+    "source": "references\\purchased\\KayKit_Skeletons_1.1_EXTRA\\assets\\gltf\\Skeleton_Dagger.bin",
+    "runtime": "public\\assets\\kaykit\\weapons\\Skeleton_Dagger.bin",
+    "bytes": 35184
+  },
+  {
+    "source": "references\\purchased\\KayKit_Skeletons_1.1_EXTRA\\assets\\gltf\\skeleton_texture_A.png",
+    "runtime": "public\\assets\\kaykit\\weapons\\skeleton_texture_A.png",
+    "bytes": 21277
+  },
+  {
+    "source": "references\\purchased\\KayKit_Skeletons_1.1_EXTRA\\assets\\gltf\\Skeleton_Staff.gltf",
+    "runtime": "public\\assets\\kaykit\\weapons\\Skeleton_Staff.gltf",
+    "bytes": 3061
+  },
+  {
+    "source": "references\\purchased\\KayKit_Skeletons_1.1_EXTRA\\assets\\gltf\\Skeleton_Staff.bin",
+    "runtime": "public\\assets\\kaykit\\weapons\\Skeleton_Staff.bin",
+    "bytes": 69244
+  },
+  {
+    "source": "references\\purchased\\KayKit_Skeletons_1.1_EXTRA\\assets\\gltf\\skeleton_texture_A.png",
+    "runtime": "public\\assets\\kaykit\\weapons\\skeleton_texture_A.png",
+    "bytes": 21277
+  },
+  {
+    "source": "references\\purchased\\KayKit_Skeletons_1.1_EXTRA\\assets\\gltf\\Skeleton_Golem_Axe.gltf",
+    "runtime": "public\\assets\\kaykit\\weapons\\Skeleton_Golem_Axe.gltf",
+    "bytes": 3070
+  },
+  {
+    "source": "references\\purchased\\KayKit_Skeletons_1.1_EXTRA\\assets\\gltf\\Skeleton_Golem_Axe.bin",
+    "runtime": "public\\assets\\kaykit\\weapons\\Skeleton_Golem_Axe.bin",
+    "bytes": 69380
+  },
+  {
+    "source": "references\\purchased\\KayKit_Skeletons_1.1_EXTRA\\assets\\gltf\\skeleton_texture_A.png",
+    "runtime": "public\\assets\\kaykit\\weapons\\skeleton_texture_A.png",
+    "bytes": 21277
+  },
+  {
+    "source": "references\\purchased\\KayKit_Skeletons_1.1_EXTRA\\assets\\gltf\\Skeleton_Mace.gltf",
+    "runtime": "public\\assets\\kaykit\\weapons\\Skeleton_Mace.gltf",
+    "bytes": 3061
+  },
+  {
+    "source": "references\\purchased\\KayKit_Skeletons_1.1_EXTRA\\assets\\gltf\\Skeleton_Mace.bin",
+    "runtime": "public\\assets\\kaykit\\weapons\\Skeleton_Mace.bin",
+    "bytes": 45620
+  },
+  {
+    "source": "references\\purchased\\KayKit_Skeletons_1.1_EXTRA\\assets\\gltf\\skeleton_texture_A.png",
+    "runtime": "public\\assets\\kaykit\\weapons\\skeleton_texture_A.png",
+    "bytes": 21277
+  },
+  {
+    "source": "references\\purchased\\KayKit_Adventurers_2.0_EXTRA\\License.txt",
+    "runtime": "public\\assets\\kaykit\\Adventurers-License.txt",
+    "bytes": 1554
+  },
+  {
+    "source": "references\\purchased\\KayKit_Skeletons_1.1_EXTRA\\License.txt",
+    "runtime": "public\\assets\\kaykit\\Skeletons-License.txt",
+    "bytes": 1552
+  },
+  {
+    "source": "references\\purchased\\KayKit_Adventurers_2.0_EXTRA\\Assets\\gltf\\turret_base.gltf",
+    "runtime": "public\\assets\\kaykit\\props\\turret_base.gltf",
+    "bytes": 11360
+  },
+  {
+    "source": "references\\purchased\\KayKit_Adventurers_2.0_EXTRA\\Assets\\gltf\\turret_base.bin",
+    "runtime": "public\\assets\\kaykit\\props\\turret_base.bin",
+    "bytes": 82656
+  },
+  {
+    "source": "references\\purchased\\KayKit_Adventurers_2.0_EXTRA\\Assets\\gltf\\engineer_texture.png",
+    "runtime": "public\\assets\\kaykit\\props\\engineer_texture.png",
+    "bytes": 16561
+  },
+  {
+    "source": "references\\purchased\\KayKit_Adventurers_2.0_EXTRA\\Assets\\gltf\\arrow_crossbow_bundle.gltf",
+    "runtime": "public\\assets\\kaykit\\props\\arrow_crossbow_bundle.gltf",
+    "bytes": 3097
+  },
+  {
+    "source": "references\\purchased\\KayKit_Adventurers_2.0_EXTRA\\Assets\\gltf\\arrow_crossbow_bundle.bin",
+    "runtime": "public\\assets\\kaykit\\props\\arrow_crossbow_bundle.bin",
+    "bytes": 15344
+  },
+  {
+    "source": "references\\purchased\\KayKit_Adventurers_2.0_EXTRA\\Assets\\gltf\\rogue_texture.png",
+    "runtime": "public\\assets\\kaykit\\props\\rogue_texture.png",
+    "bytes": 15026
+  },
+  {
+    "source": "references\\purchased\\KayKit_Adventurers_2.0_EXTRA\\Assets\\gltf\\potion_large_orange.gltf",
+    "runtime": "public\\assets\\kaykit\\props\\potion_large_orange.gltf",
+    "bytes": 3057
+  },
+  {
+    "source": "references\\purchased\\KayKit_Adventurers_2.0_EXTRA\\Assets\\gltf\\potion_large_orange.bin",
+    "runtime": "public\\assets\\kaykit\\props\\potion_large_orange.bin",
+    "bytes": 7152
+  },
+  {
+    "source": "references\\purchased\\KayKit_Adventurers_2.0_EXTRA\\Assets\\gltf\\druid_texture.png",
+    "runtime": "public\\assets\\kaykit\\props\\druid_texture.png",
+    "bytes": 15263
+  },
+  {
+    "source": "references\\purchased\\KayKit_Adventurers_2.0_EXTRA\\Assets\\gltf\\potion_large_blue.gltf",
+    "runtime": "public\\assets\\kaykit\\props\\potion_large_blue.gltf",
+    "bytes": 3051
+  },
+  {
+    "source": "references\\purchased\\KayKit_Adventurers_2.0_EXTRA\\Assets\\gltf\\potion_large_blue.bin",
+    "runtime": "public\\assets\\kaykit\\props\\potion_large_blue.bin",
+    "bytes": 7152
+  },
+  {
+    "source": "references\\purchased\\KayKit_Adventurers_2.0_EXTRA\\Assets\\gltf\\druid_texture.png",
+    "runtime": "public\\assets\\kaykit\\props\\druid_texture.png",
+    "bytes": 15263
+  },
+  {
+    "source": "references\\purchased\\KayKit_Adventurers_2.0_EXTRA\\Assets\\gltf\\potion_medium_red.gltf",
+    "runtime": "public\\assets\\kaykit\\props\\potion_medium_red.gltf",
+    "bytes": 3051
+  },
+  {
+    "source": "references\\purchased\\KayKit_Adventurers_2.0_EXTRA\\Assets\\gltf\\potion_medium_red.bin",
+    "runtime": "public\\assets\\kaykit\\props\\potion_medium_red.bin",
+    "bytes": 7152
+  },
+  {
+    "source": "references\\purchased\\KayKit_Adventurers_2.0_EXTRA\\Assets\\gltf\\druid_texture.png",
+    "runtime": "public\\assets\\kaykit\\props\\druid_texture.png",
+    "bytes": 15263
+  },
+  {
+    "source": "references\\purchased\\KayKit_Adventurers_2.0_EXTRA\\Assets\\gltf\\spellbook_open.gltf",
+    "runtime": "public\\assets\\kaykit\\props\\spellbook_open.gltf",
+    "bytes": 3072
+  },
+  {
+    "source": "references\\purchased\\KayKit_Adventurers_2.0_EXTRA\\Assets\\gltf\\spellbook_open.bin",
+    "runtime": "public\\assets\\kaykit\\props\\spellbook_open.bin",
+    "bytes": 15128
+  },
+  {
+    "source": "references\\purchased\\KayKit_Adventurers_2.0_EXTRA\\Assets\\gltf\\mage_texture.png",
+    "runtime": "public\\assets\\kaykit\\props\\mage_texture.png",
+    "bytes": 14740
+  },
+  {
+    "source": "references\\purchased\\KayKit_Adventurers_2.0_EXTRA\\Assets\\gltf\\spellbook_closed.gltf",
+    "runtime": "public\\assets\\kaykit\\props\\spellbook_closed.gltf",
+    "bytes": 3081
+  },
+  {
+    "source": "references\\purchased\\KayKit_Adventurers_2.0_EXTRA\\Assets\\gltf\\spellbook_closed.bin",
+    "runtime": "public\\assets\\kaykit\\props\\spellbook_closed.bin",
+    "bytes": 14520
+  },
+  {
+    "source": "references\\purchased\\KayKit_Adventurers_2.0_EXTRA\\Assets\\gltf\\mage_texture.png",
+    "runtime": "public\\assets\\kaykit\\props\\mage_texture.png",
+    "bytes": 14740
+  }
+]

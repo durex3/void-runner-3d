@@ -1,0 +1,19 @@
+{
+  "name": "void-runner-3d",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1 --port 5188",
+    "build": "vite build",
+    "test": "node --test tests/garden.test.mjs tests/combat.test.mjs && node tests/browser.mjs",
+    "test:weapons": "node tests/role-weapons.mjs && node tests/mechanics-browser.mjs && node tests/knight-browser.mjs"
+  },
+  "dependencies": {
+    "three": "0.180.0"
+  },
+  "devDependencies": {
+    "vite": "6.4.3",
+    "playwright": "1.58.2"
+  }
+}

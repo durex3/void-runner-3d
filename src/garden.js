@@ -1,0 +1,39 @@
+import * as T from 'three';
+import {createCompanion} from './ruins.js';
+import {createRelic} from './relics.js';
+
+export const PLANTS=['自动弩台','炼金炸瓶','雷鸣法典'];
+export const COMBOS=[
+ {id:'voltage',name:'炼金共振',symbol:'ϟ',desc:'雷鸣法典或雷鸣法杖击中附近炼金炸瓶时，引爆并向最近三个敌人释放追踪雷种。'},
+ {id:'snare',name:'淬毒弩箭',symbol:'♧',desc:'弩箭命中减速 45%；电击对减速目标额外造成 70% 伤害。'},
+ {id:'compost',name:'灵魂回收',symbol:'♥',desc:'装置击杀敌人时恢复 2 生命，并延长附近装置寿命 3 秒。'},
+ {id:'watering',name:'火力超载',symbol:'✿',desc:'使用炼金霰弹时，附近装置立即启动、加速下一次攻击并恢复寿命。'},
+ {id:'pollen',name:'战术空投',symbol:'➶',desc:'每次冲刺沿途部署两件当前武器对应的装置。'},
+ {id:'friendship',name:'协同协议',symbol:'∞',desc:'伙伴附近装置伤害 +50%；采集构装体拾取范围翻倍，治愈构装体治疗量翻倍。'},
+];
+const discGeo=new T.RingGeometry(.88,1,32);const effectMats=[0x97db71,0xffbb5f,0xc5a5ff,0xff7757].map(color=>new T.MeshBasicMaterial({color,transparent:true,opacity:.65,side:T.DoubleSide,depthWrite:false}));
+export class Garden{
+ constructor({scene,hero,state,enemies,damage,toast,burst,visualFactory=createRelic,random=Math.random}){Object.assign(this,{scene,hero,state,enemies,damage,toast,burst,visualFactory,random});this.plants=[];this.seeds=[];this.buddies=[];this.effects=[];this.combos=new Set();this.stats={planted:0,kills:0,combos:0,destroyed:0};this.stompTimer=7}
+ reset(){for(const list of [this.plants,this.seeds,this.buddies,this.effects]){for(const x of list)this.scene.remove(x.obj);list.length=0}this.combos.clear();this.stats={planted:0,kills:0,combos:0,destroyed:0};this.stompTimer=7}
+ pulse(pos,type=0,radius=2,life=.45){const obj=new T.Mesh(discGeo,effectMats[type]);obj.rotation.x=-Math.PI/2;obj.position.copy(pos).setY(.09);obj.scale.setScalar(radius);this.scene.add(obj);this.effects.push({obj,life,max:life,radius})}
+ seed(type,pos){if(this.seeds.length>=36){this.scene.remove(this.seeds.shift().obj)}const obj=this.visualFactory(type,true);obj.position.copy(pos).setY(0);this.scene.add(obj);this.seeds.push({obj,type,life:35});}
+ plant(type,pos){if(this.plants.length>=24){this.scene.remove(this.plants.shift().obj)}const position=pos.clone().setY(0);for(let i=0;i<14&&this.plants.some(p=>p.obj.position.distanceTo(position)<1.15);i++){position.copy(pos).add(new T.Vector3(Math.cos(i*2.4)*(1+i*.18),0,Math.sin(i*2.4)*(1+i*.18))).setY(0)}if(position.length()>19.4)position.setLength(19.4);const obj=this.visualFactory(type);obj.position.copy(position);this.scene.add(obj);const p={obj,type,life:48,grow:1.1,cooldown:.4,dead:false};this.plants.push(p);this.stats.planted++;this.pulse(position,type,1.3);return p}
+ recruit(type){const found=this.buddies.find(b=>b.type===type);if(found){found.rank=Math.min(3,found.rank+1);this.toast('伙伴成长！现在 '+found.rank+' 级');return}const obj=createCompanion(type);obj.scale.setScalar(1);obj.position.copy(this.hero.position);this.scene.add(obj);this.buddies.push({obj,type,rank:1,cooldown:2});this.toast(type==='slime'?'采集构装体加入：帮你收集星星和战利品':'治愈构装体加入：定期治疗与充能维护装置')}
+ targets(pos,r){return this.enemies().filter(e=>!e.dead&&!e.stunned&&e.obj.position.distanceTo(pos)<r).sort((a,b)=>a.obj.position.distanceToSquared(pos)-b.obj.position.distanceToSquared(pos))}
+ hit(e,d,kind,pos){const nearBuddy=this.buddies.some(b=>b.obj.position.distanceTo(pos)<5);const bonus=this.combos.has('friendship')&&nearBuddy?1.5:1;const electric=kind==='electric'&&this.combos.has('snare')&&e.slow>0?1.7:1;this.damage(e,d*this.state.damage*bonus*electric,{garden:true});if(kind==='thorn'&&this.combos.has('snare'))e.slow=2.5;}
+ explode(p){if(p.dead)return;p.dead=true;this.pulse(p.obj.position,1,3.2);this.burst(p.obj.position);for(const e of this.targets(p.obj.position,3.2))this.hit(e,48,'blast',p.obj.position)}
+ electrify(pos){if(!this.combos.has('voltage'))return;for(const p of this.plants){if(p.type!==1||p.dead||p.obj.position.distanceTo(pos)>5)continue;this.explode(p);this.stats.combos++;for(const e of this.targets(p.obj.position,9).slice(0,3)){this.pulse(e.obj.position,2,1);this.hit(e,26,'electric',p.obj.position)}}}
+ onShot(w){if(w===1&&this.combos.has('watering')){this.stats.combos++;for(const p of this.plants){if(p.obj.position.distanceTo(this.hero.position)>5)continue;p.grow=0;p.cooldown=Math.max(0,p.cooldown-.9);p.life=Math.min(60,p.life+1.5)}this.pulse(this.hero.position,0,5,.2)}}
+ onDash(from,to){if(!this.combos.has('pollen'))return;for(const f of [.25,.7])this.plant(this.state.weapon===3?0:this.state.weapon,from.clone().lerp(to,f));this.stats.combos++}
+ onKill(pos,source){if(Number.isInteger(source?.weapon)){const primary=source.weapon===3?0:source.weapon,r=this.random();this.seed((primary+(r<.6?0:r<.8?1:2))%3,pos)}if(source?.garden){this.stats.kills++;if(this.combos.has('compost')){this.state.hp=Math.min(this.state.maxHp,this.state.hp+2);for(const p of this.plants)if(p.obj.position.distanceTo(pos)<6)p.life=Math.min(60,p.life+3);this.stats.combos++}}}
+ stomp(pos){this.pulse(pos,3,4,1.6);this.effects.at(-1).stomp=true;this.toast('巨像践踏！离开红圈，保护阵地');}
+ step(dt,drops,hurt){
+  for(const seed of this.seeds){seed.life-=dt;seed.obj.rotation.y+=dt*1.8;const carriers=[this.hero,...this.buddies.filter(b=>b.type==='slime').map(b=>b.obj)];const collector=carriers.find(o=>o.position.distanceTo(seed.obj.position)<(o===this.hero?1.2:this.combos.has('friendship')?4:2));if(collector){this.plant(seed.type,this.hero.position);seed.life=0}}
+  this.seeds=this.seeds.filter(s=>{if(s.life<=0){this.scene.remove(s.obj);return false}return true});
+  for(const b of this.buddies){const offset=new T.Vector3(b.type==='slime'?-1.5:1.5,0,-1.5),goal=this.hero.position.clone().add(offset);b.obj.position.lerp(goal,1-Math.exp(-dt*5));b.obj.position.y=b.type==='mushroom'?Math.sin(this.state.time*4)*.1:0;b.obj.traverse(o=>{if(o.name==='rotor')o.rotation.y+=dt*35});b.cooldown-=dt;if(b.type==='slime'){const r=(this.combos.has('friendship')?8:4)+b.rank;for(const d of drops){if(d.obj.position.distanceTo(b.obj.position)<r)d.obj.position.lerp(this.hero.position.clone().setY(.5),1-Math.exp(-dt*5))}}else if(b.cooldown<=0){b.cooldown=4;this.state.hp=Math.min(this.state.maxHp,this.state.hp+(this.combos.has('friendship')?8:4)*b.rank);for(const p of this.plants)if(p.obj.position.distanceTo(b.obj.position)<5){p.grow=0;p.cooldown=Math.max(0,p.cooldown-1);p.life=Math.min(60,p.life+3)}this.pulse(b.obj.position,0,4)}}
+  for(const p of this.plants){if(p.dead)continue;p.life-=dt;p.grow-=dt;p.cooldown-=dt;p.obj.scale.setScalar(p.grow>0?.4+.6*(1-p.grow/1.1):1);if(p.life<6)p.obj.visible=Math.floor(p.life*5)%2===0;if(p.grow>0||p.cooldown>0)continue;const targets=this.targets(p.obj.position,p.type===1?2.7:p.type===0?7:6);if(!targets.length)continue;if(p.type===0){const delta=targets[0].obj.position.clone().sub(p.obj.position);p.obj.rotation.y=Math.atan2(delta.x,delta.z)}p.cooldown=p.type===0?1.05:1.8;if(p.type===1)this.explode(p);else if(p.type===0){this.hit(targets[0],17,'thorn',p.obj.position);this.pulse(targets[0].obj.position,0,.6)}else{for(const e of targets.slice(0,3)){this.hit(e,15,'electric',p.obj.position);this.pulse(e.obj.position,2,.8)}this.electrify(p.obj.position)}}
+  this.plants=this.plants.filter(p=>{if(p.dead||p.life<=0){this.scene.remove(p.obj);return false}return true});
+  for(const f of this.effects){f.life-=dt;if(f.stomp){f.obj.scale.setScalar(f.radius*(.92+Math.sin(this.state.time*18)*.08));if(f.life<=0){if(this.hero.position.distanceTo(f.obj.position)<4)hurt(28);for(const p of this.plants)if(p.obj.position.distanceTo(f.obj.position)<4){p.dead=true;this.stats.destroyed++}this.burst(f.obj.position)}}else f.obj.scale.setScalar(f.radius*(1+(1-f.life/f.max)*.3))}
+  this.effects=this.effects.filter(f=>{if(f.life<=0){this.scene.remove(f.obj);return false}return true});const boss=this.enemies().find(e=>e.type==='boss'&&!e.dead);if(boss){this.stompTimer-=dt;if(this.stompTimer<=0){this.stompTimer=7;this.stomp((this.plants.find(p=>!p.dead)?.obj.position||this.hero.position).clone())}}
+ }
+}
