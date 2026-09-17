@@ -1,4 +1,4 @@
-const SHELL=`<div id="xp"></div><header id="hud"><div><div class="eyebrow">RELIC WORKSHOP</div><div class="brand">遗迹工坊</div><div class="hp"><i id="health"></i></div><small id="healthtext">100 / 100</small></div><div class="readout"><div>第 <strong id="wave">01</strong> 波 / 08</div><div><span id="time">00:00</span> · 击败 <span id="kills">0</span> · LV <span id="level">1</span></div><button id="sound" aria-label="开关音效">音效 开</button><button id="pause" aria-label="暂停">Ⅱ</button></div></header><div id="bossbar" class="hidden">骸骨巨像<div><i></i></div></div><div id="toast"></div><aside id="garden-hud"><b>我的战场装置</b><div id="garden-counts"></div><div id="buddy-list">伙伴：第 2 波起，精英残血可收服</div><div id="combo-list">击杀掉战利品 · 靠近收集后自动部署</div><button id="guide">玩法图鉴 ?</button></aside><div id="bottom"><div id="weapons"></div><div id="controls">W A S D / 方向键 移动 · SPACE 冲刺<br>自动瞄准攻击 · 1 / 2 / 3 切换武器 · ESC 暂停<br><span id="dashstatus">冲刺就绪</span></div><button id="touchdash" class="primary">冲刺</button></div><div id="touch">${['↑','←','↓','→'].map((label,index)=>`<button data-key="${['w','a','s','d'][index]}">${label}</button>`).join('')}</div><section id="overlay"><div class="cover"><div class="seal">3D SURVIVAL ROGUELITE</div><h1>遗迹<br>工坊<span>RELIC WORKSHOP</span></h1><p>射弩、开火、施法，击退骸骨军团，用战利品构筑防线。<br>自动弩台 × 炼金炸瓶 × 雷鸣法典，组合产生连锁反应。<br>击败亡灵精英，唤醒守护构装体，守住遗迹工坊。</p><div id="characters" aria-label="选择冒险者"><button data-character="Ranger" class="selected">游侠</button><button data-character="Knight">骑士</button><button data-character="Druid">德鲁伊</button><button data-character="Engineer">工程师</button></div><p id="role-description"></p><button id="start" class="primary">进入遗迹　 →</button><footer>轻松开局 · 越战越强 · <span id="best"></span></footer></div></section><section id="modal" class="hidden"></section>`;
+const SHELL=`<div id="xp"></div><header id="hud"><div class="hud-vitals"><div class="hud-brand"><span class="brand">遗迹工坊</span><small>RELIC WORKSHOP</small></div><div class="health-row"><span>生命</span><div class="hp"><i id="health"></i></div><strong id="healthtext">100 / 100</strong></div></div><div class="wave-readout"><small>当前波次</small><div>第 <strong id="wave">01</strong> 波 <span>/ 08</span></div></div><div class="readout"><div class="hud-metrics"><span><small>时间</small><b id="time">00:00</b></span><span><small>击败</small><b id="kills">0</b></span><span><small>等级</small><b>LV <i id="level">1</i></b></span></div><div class="hud-actions"><button id="stats-toggle" aria-label="查看角色属性" aria-controls="stats-panel" aria-expanded="false">属性</button><button id="sound" aria-label="开关音效">音效 开</button><button id="pause" aria-label="暂停">Ⅱ</button></div></div></header><div id="bossbar" class="hidden">骸骨巨像<div><i></i></div></div><div id="toast"></div><aside id="garden-hud" aria-label="战场装置状态"><button id="garden-toggle" aria-controls="garden-details" aria-expanded="false"><span><small>FIELD DEVICES</small><b>战场装置</b></span><strong><span id="device-total">0</span> / 24</strong><i>⌄</i></button><div id="device-summary"></div><div id="garden-details" class="hidden"><div class="garden-section"><span>伙伴</span><div id="buddy-list"></div></div><div class="garden-section"><span>联动</span><div id="combo-list"></div></div><button id="guide">玩法图鉴 ?</button></div></aside><aside id="stats-panel" class="hidden" aria-label="当前角色详细属性"><div class="stats-heading"><div><small>CURRENT LOADOUT</small><b id="stats-title">当前属性</b></div><button id="stats-close" aria-label="关闭属性面板">×</button></div><p id="stats-role"></p><div class="stats-grid"><div><span>生命</span><strong id="stat-health"></strong></div><div><span>移动速度</span><strong id="stat-speed"></strong></div><div><span>伤害</span><strong id="stat-damage"></strong></div><div><span>攻击间隔</span><strong id="stat-interval"></strong></div><div><span>攻击频率</span><strong id="stat-frequency"></strong></div><div><span>范围 / 目标</span><strong id="stat-range"></strong></div></div><div class="stats-multipliers"><span>伤害倍率 <b id="stat-damage-multiplier"></b></span><span>攻速倍率 <b id="stat-rate-multiplier"></b></span></div><div id="stat-mechanics"></div><small id="stat-note"></small></aside><div id="bottom"><div id="weapons"></div><div id="controls"><div id="control-hint"><span><b>WASD</b> 移动　<b>1 / 2 / 3</b> 切换武器</span><span><b>SPACE</b> 冲刺　<b>ESC</b> 暂停</span></div><div id="dash-readout"><div><span id="dashstatus">冲刺就绪</span><kbd>SPACE</kbd></div><div class="dash-track"><i id="dashfill"></i></div></div></div><button id="touchdash" class="primary">冲刺</button></div><div id="touch">${['↑','←','↓','→'].map((label,index)=>`<button data-key="${['w','a','s','d'][index]}">${label}</button>`).join('')}</div><section id="overlay"><div class="cover"><div class="seal">3D SURVIVAL ROGUELITE</div><h1>遗迹<br>工坊<span>RELIC WORKSHOP</span></h1><p>射弩、开火、施法，击退骸骨军团，用战利品构筑防线。<br>自动弩台 × 炼金炸瓶 × 雷鸣法典，组合产生连锁反应。<br>击败亡灵精英，唤醒守护构装体，守住遗迹工坊。</p><div id="characters" aria-label="选择冒险者"><button data-character="Ranger" class="selected">游侠</button><button data-character="Knight">骑士</button><button data-character="Druid">德鲁伊</button><button data-character="Engineer">工程师</button></div><p id="role-description"></p><button id="start" class="primary">进入遗迹　 →</button><footer>轻松开局 · 越战越强 · <span id="best"></span></footer></div></section><section id="modal" class="hidden"></section>`;
 
 export class GameView{
   constructor({app,heroes,combos,plants}){
@@ -14,6 +14,8 @@ export class GameView{
     this.elements={
       start:this.$('#start'),modal:this.$('#modal'),overlay:this.$('#overlay'),
       toast:this.$('#toast'),weapons:this.$('#weapons'),roleDescription:this.$('#role-description'),
+      statsPanel:this.$('#stats-panel'),statsToggle:this.$('#stats-toggle'),
+      gardenHud:this.$('#garden-hud'),gardenDetails:this.$('#garden-details'),gardenToggle:this.$('#garden-toggle'),
     };
   }
 
@@ -26,6 +28,9 @@ export class GameView{
     this.$('#sound').onclick=onSound;
     this.$('#touchdash').onclick=onDash;
     this.$('#guide').onclick=onGuide;
+    this.elements.statsToggle.onclick=()=>this.toggleStats();
+    this.$('#stats-close').onclick=()=>this.toggleStats(false);
+    this.elements.gardenToggle.onclick=()=>this.toggleGarden();
   }
 
   setLoading(done,total){
@@ -47,9 +52,28 @@ export class GameView{
 
   setBest(best){this.$('#best').textContent=`最佳 ${best} 击败`}
   setSoundMuted(muted){this.$('#sound').textContent=`音效 ${muted?'关':'开'}`}
-  hideOverlay(){this.elements.overlay.classList.add('hidden')}
+  hideOverlay(){
+    this.elements.overlay.classList.add('hidden');
+    const hint=this.$('#control-hint');
+    hint.classList.remove('intro');
+    void hint.offsetWidth;
+    hint.classList.add('intro');
+  }
   showOverlay(){this.elements.overlay.classList.remove('hidden')}
   hideModal(){this.elements.modal.classList.add('hidden')}
+
+  toggleStats(open=this.elements.statsPanel.classList.contains('hidden')){
+    if(open)this.toggleGarden(false);
+    this.elements.statsPanel.classList.toggle('hidden',!open);
+    this.elements.statsToggle.setAttribute('aria-expanded',String(open));
+  }
+
+  toggleGarden(open=this.elements.gardenDetails.classList.contains('hidden')){
+    if(open)this.toggleStats(false);
+    this.elements.gardenDetails.classList.toggle('hidden',!open);
+    this.elements.gardenHud.classList.toggle('expanded',open);
+    this.elements.gardenToggle.setAttribute('aria-expanded',String(open));
+  }
 
   selectHero(name){
     this.app.querySelectorAll('[data-character]').forEach(button=>button.classList.toggle('selected',button.dataset.character===name));
@@ -57,7 +81,7 @@ export class GameView{
 
   renderLoadout(name,slot,onEquip){
     const role=this.heroes[name];
-    this.elements.weapons.innerHTML=role.weapons.map((weapon,index)=>`<button class="weapon ${index===slot?'active':''}" data-weapon="${index}" title="${weapon.detail}"><small>${role.label} / 0${index+1}</small><b>${weapon.label}</b><span class="weapon-detail">${weapon.detail}</span></button>`).join('');
+    this.elements.weapons.innerHTML=role.weapons.map((weapon,index)=>`<button class="weapon ${index===slot?'active':''}" data-weapon="${index}" aria-keyshortcuts="${index+1}" title="${weapon.detail}"><span class="weapon-key">${index+1}</span><span class="weapon-copy"><b>${weapon.label}</b><small class="weapon-detail">${weapon.detail.split(' · ')[0]}</small></span><span class="weapon-status" data-weapon-status="${index}">${index===slot?'可用':'待命'}</span></button>`).join('');
     this.elements.roleDescription.textContent=`${role.label} · ${role.description}。${role.weapons.map(weapon=>weapon.label).join(' / ')}，局内按 ${role.weapons.map((_,index)=>index+1).join(' / ')} 切换。`;
     this.app.querySelectorAll('[data-weapon]').forEach(button=>button.onclick=()=>onEquip(Number(button.dataset.weapon)));
   }
@@ -107,10 +131,36 @@ export class GameView{
     this.$('#change-hero').onclick=onChangeHero;
   }
 
-  renderHud(state,garden,enemies){
-    this.$('#garden-counts').textContent=this.plants.map((name,index)=>`${name} ${garden.plants.filter(plant=>plant.type===index&&!plant.dead).length}`).join(' · ');
-    this.$('#buddy-list').textContent=garden.buddies.length?'伙伴：'+garden.buddies.map(buddy=>`${buddy.type==='slime'?'采集构装体':'治愈构装体'} Lv.${buddy.rank}`).join(' / '):'伙伴：第 2 / 4 / 6 波精英可收服';
-    this.$('#combo-list').textContent=garden.combos.size?'组合：'+this.combos.filter(combo=>garden.combos.has(combo.id)).map(combo=>combo.name).join(' · '):'拾取战利品自动部署 · 升级解锁组合';
+  renderStats(stats){
+    this.$('#stats-title').textContent=`${stats.role} · ${stats.weapon}`;
+    this.$('#stats-role').textContent=stats.roleDescription;
+    this.$('#stat-health').textContent=stats.health;
+    this.$('#stat-speed').textContent=stats.moveSpeed;
+    this.$('#stat-damage').textContent=stats.damage;
+    this.$('#stat-interval').textContent=stats.interval;
+    this.$('#stat-frequency').textContent=stats.attacksPerSecond;
+    this.$('#stat-range').textContent=stats.range;
+    this.$('#stat-damage-multiplier').textContent=stats.damageMultiplier;
+    this.$('#stat-rate-multiplier').textContent=stats.rateMultiplier;
+    this.$('#stat-mechanics').innerHTML=stats.mechanics.map(mechanic=>`<p>${mechanic}</p>`).join('');
+    this.$('#stat-note').textContent=stats.note;
+  }
+
+  renderDevices(status){
+    this.$('#device-total').textContent=status.total;
+    this.$('#device-summary').innerHTML=status.devices.map(device=>{
+      const alerts=[];
+      if(device.starting)alerts.push(`启动 ${device.starting}`);
+      if(device.expiring)alerts.push(`将过期 ${device.expiring}`);
+      const status=alerts.join(' · ')||(device.count?'运行稳定':'暂无部署');
+      return `<div class="device-row device-${device.type} ${device.expiring?'warning':''}"><span class="device-icon">${device.icon}</span><b>${device.name}</b><small>${status}</small><strong>${device.count}</strong></div>`;
+    }).join('');
+    this.$('#buddy-list').innerHTML=status.companions.length?status.companions.map(companion=>`<span>${companion.name} Lv.${companion.rank}</span>`).join(''):'<small>第 2 / 4 / 6 波精英可收服</small>';
+    this.$('#combo-list').innerHTML=status.combos.length?status.combos.map(combo=>`<span title="${combo.desc}">${combo.symbol} ${combo.name}</span>`).join(''):'<small>升级时可解锁装置联动</small>';
+  }
+
+  renderHud(state,garden,enemies,stats,devices){
+    this.renderDevices(devices);
     this.$('#health').style.width=`${state.hp/state.maxHp*100}%`;
     this.$('#healthtext').textContent=`${Math.ceil(state.hp)} / ${state.maxHp}`;
     this.$('#wave').textContent=String(state.wave).padStart(2,'0');
@@ -118,9 +168,26 @@ export class GameView{
     this.$('#level').textContent=state.level;
     this.$('#time').textContent=`${String(Math.floor(state.time/60)).padStart(2,'0')}:${String(Math.floor(state.time%60)).padStart(2,'0')}`;
     this.$('#xp').style.width=`${Math.min(100,state.xp/state.need*100)}%`;
-    this.$('#dashstatus').textContent=state.dash>0?`冲刺冷却 ${state.dash.toFixed(1)}s`:'冲刺就绪';
+    const dashStatus=this.$('#dashstatus');
+    dashStatus.textContent=state.dash>0?`冲刺冷却 ${state.dash.toFixed(1)}s`:'冲刺就绪';
+    dashStatus.classList.toggle('cooling',state.dash>0);
+    const dashReadout=this.$('#dash-readout');
+    dashReadout.classList.toggle('cooling',state.dash>0);
+    const dashReady=Math.max(0,Math.min(100,(1-state.dash/3)*100));
+    this.$('#dashfill').style.width=`${dashReady}%`;
+    const touchDash=this.$('#touchdash');
+    touchDash.textContent=state.dash>0?state.dash.toFixed(1):'冲刺';
+    touchDash.classList.toggle('cooling',state.dash>0);
+    touchDash.style.setProperty('--dash-ready',`${dashReady}%`);
+    const weaponStatus=this.$(`[data-weapon-status="${state.loadout}"]`);
+    if(weaponStatus){
+      const cooling=state.shot>0;
+      weaponStatus.textContent=cooling?`冷却 ${state.shot.toFixed(1)}s`:'可用';
+      weaponStatus.classList.toggle('cooling',cooling);
+    }
     const boss=enemies.find(enemy=>enemy.type==='boss'&&!enemy.dead);
     this.$('#bossbar').classList.toggle('hidden',!boss);
     if(boss)this.$('#bossbar i').style.width=`${boss.hp/boss.maxHp*100}%`;
+    this.renderStats(stats);
   }
 }

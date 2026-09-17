@@ -10,9 +10,28 @@ await page.waitForFunction(()=>window.__game);
 await page.waitForFunction(()=>document.body.dataset.nature==='loaded');
 await page.screenshot({path:'test-results/title.png'});
 await page.click('#start');
+assert.equal(await page.locator('.weapon-detail').first().textContent(),'稳定单发');
+assert.equal(await page.locator('[data-weapon="1"] .weapon-status').textContent(),'待命');
+assert.equal(await page.evaluate(()=>{const boxes=['.hud-vitals','.wave-readout','.readout'].map(selector=>document.querySelector(selector).getBoundingClientRect()).sort((a,b)=>a.left-b.left);return boxes.every((box,index)=>index===0||boxes[index-1].right<=box.left)}),true);
+assert.equal(await page.locator('#control-hint').evaluate(element=>getComputedStyle(element).animationName),'hud-hint-exit');
+assert.equal(await page.locator('.device-row').count(),3);assert.equal(await page.locator('#device-total').textContent(),'0');
+assert.equal(await page.locator('#device-summary').isVisible(),false);await page.screenshot({path:'test-results/devices-collapsed-desktop.png'});
+await page.click('#garden-toggle');assert.equal(await page.locator('#garden-details').isVisible(),true);
+await page.screenshot({path:'test-results/devices-desktop.png'});
+await page.click('#stats-toggle');assert.equal(await page.locator('#stats-panel').isVisible(),true);
+assert.equal(await page.locator('#garden-details').isVisible(),false);
+assert.match(await page.locator('#stats-title').textContent(),/游侠 · 复合弩/);
+assert.equal(await page.locator('#stat-damage').textContent(),'30');
+await page.click('[data-weapon="1"]');assert.equal(await page.locator('#stat-damage').textContent(),'56 → 44.8 → 35.84');
+await page.evaluate(()=>{window.__game.state.damage=1.25;window.__game.state.rate=1.2});await page.waitForFunction(()=>document.querySelector('#stat-damage-multiplier').textContent==='×1.25');
+assert.equal(await page.locator('#stat-damage-multiplier').textContent(),'×1.25');
+await page.evaluate(()=>{window.__game.state.mode='paused';window.__game.state.shot=.42});await page.waitForFunction(()=>document.querySelector('.weapon.active .weapon-status').textContent.includes('冷却'));
+assert.match(await page.locator('.weapon.active .weapon-status').textContent(),/冷却/);await page.evaluate(()=>{window.__game.state.shot=0;window.__game.state.mode='playing'});
+await page.screenshot({path:'test-results/stats-desktop.png'});
+await page.click('#stats-close');
 await page.keyboard.down('d');await page.waitForFunction(()=>window.__game.hero.position.x>1);await page.keyboard.up('d');
 assert.ok(await page.evaluate(()=>window.__game.hero.position.x>1));
-await page.keyboard.press('Space');assert.ok(await page.evaluate(()=>window.__game.state.dash>0));
+await page.keyboard.press('Space');assert.ok(await page.evaluate(()=>window.__game.state.dash>0));await page.waitForFunction(()=>document.querySelector('#dash-readout').classList.contains('cooling')&&parseFloat(document.querySelector('#dashfill').style.width)<100);
 await page.keyboard.press('Escape');const before=await page.evaluate(()=>window.__game.state.time);await page.waitForTimeout(300);assert.equal(await page.evaluate(()=>window.__game.state.time),before);await page.click('#resume');
 for(let w=0;w<3;w++){await page.click(`[data-weapon="${w}"]`);assert.equal(await page.evaluate(()=>window.__game.state.loadout),w);await page.evaluate(()=>{const g=window.__game;g.state.inv=100;g.state.shot=0;g.spawnEnemy('brute');const e=g.enemies.at(-1);e.obj.position.copy(g.hero.position).add({x:0,y:0,z:3});e.hp=10;e.speed=0});await page.waitForTimeout(1000)}
 assert.ok(await page.evaluate(()=>window.__game.state.kills>=3));
@@ -22,18 +41,22 @@ await page.evaluate(()=>{window.__game.state.inv=0;window.__game.hero.visible=tr
 for(const type of ['brute','runner']){await page.evaluate(type=>{const g=window.__game;g.state.inv=100;g.spawnEnemy(type,true);g.damageEnemy(g.enemies.at(-1),10000);g.tick(.016)},type);await page.click('#recruit')}
 assert.equal(await page.evaluate(()=>window.__game.garden.buddies.length),2);
 await page.evaluate(()=>{const g=window.__game;g.spawnEnemy('brute',true);g.damageEnemy(g.enemies.at(-1),10000);g.tick(.016)});await page.click('#harvest');await page.locator('.card').first().click();
-await page.click('#guide');assert.equal(await page.locator('.guide-combos>div').count(),6);await page.click('#resume');
+await page.click('#garden-toggle');await page.click('#guide');assert.equal(await page.locator('.guide-combos>div').count(),6);await page.click('#resume');
 await page.evaluate(()=>{const g=window.__game;for(let i=0;i<3;i++){const pos=g.hero.position.clone();pos.x+=i*2-2;pos.z-=3;g.garden.plant(i,pos)}g.state.inv=0;g.hero.visible=true});
+await page.waitForFunction(()=>[...document.querySelectorAll('.device-row>strong')].map(element=>element.textContent).join(',')==='1,1,1');assert.equal(await page.locator('#device-total').textContent(),'3');
 await page.screenshot({path:'test-results/gameplay.png'});
 await page.evaluate(()=>{const g=window.__game;g.state.inv=0;g.hurt(10000)});assert.equal(await page.evaluate(()=>window.__game.state.mode),'lost');await page.click('#restart');assert.equal(await page.evaluate(()=>window.__game.state.hp),100);
 // Accelerate combat through all waves, retaining the actual wave transition code.
 for(let i=0;i<24;i++){if(await page.evaluate(()=>window.__game.state.mode)==='won')break;await page.evaluate(()=>{const g=window.__game;g.state.inv=100;g.state.remaining=0;g.enemies.forEach(e=>g.damageEnemy(e,100000));g.tick(.016)});const mode=await page.evaluate(()=>window.__game.state.mode);if(mode==='upgrade')await page.locator('.card').first().click();if(mode==='capture')await page.click('#recruit')}
 assert.equal(await page.evaluate(()=>window.__game.state.mode),'won');
 await page.screenshot({path:'test-results/victory.png'});
-await page.click('#restart');await page.setViewportSize({width:390,height:844});await page.waitForTimeout(250);await page.screenshot({path:'test-results/mobile.png'});
+await page.click('#restart');await page.setViewportSize({width:390,height:844});await page.waitForTimeout(250);if(await page.locator('#garden-toggle').getAttribute('aria-expanded')==='true')await page.click('#garden-toggle');
+assert.equal(await page.locator('#device-summary').isVisible(),false);await page.screenshot({path:'test-results/mobile-hud.png'});await page.click('#stats-toggle');
+assert.equal(await page.locator('#stats-panel').evaluate(el=>{const box=el.getBoundingClientRect();return box.left>=0&&box.right<=innerWidth&&box.bottom<=innerHeight}),true);
+await page.screenshot({path:'test-results/mobile.png'});
 assert.equal(await page.evaluate(()=>window.__game.garden.plants.length+window.__game.garden.buddies.length+window.__game.garden.combos.size),0);
 assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
 assert.ok(await page.locator('#hud').evaluate(el=>el.getBoundingClientRect().height<180));
 assert.deepEqual(errors,[]);
-await writeFile('test-results/report.json',JSON.stringify({passed:true,checks:['WebGL render','movement','dash','pause','3 weapons kill enemies','random upgrades','death and restart','8 waves and victory','mobile layout'],errors},null,2));
-console.log('PASS: browser gameplay, progression, restart, mobile layout; no browser errors');await browser.close();
+await writeFile('test-results/report.json',JSON.stringify({passed:true,checks:['WebGL render','live character stats','movement','dash','pause','3 weapons kill enemies','random upgrades','death and restart','8 waves and victory','mobile layout'],errors},null,2));
+console.log('PASS: browser gameplay, live character stats, progression, restart, mobile layout; no browser errors');await browser.close();

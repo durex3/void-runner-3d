@@ -16,6 +16,8 @@
 | `audio.js` | Web Audio 播放及静音状态 |
 | `scene-runtime.js` | Three.js 场景、相机、渲染器和基础灯光 |
 | `game-state.js` | 局内状态的创建与重置规则 |
+| `character-stats.js` | 当前角色、装备与升级后的展示数值计算 |
+| `device-status.js` | 装置数量、启动/到期状态、伙伴与联动汇总 |
 | `upgrades.js` | 升级候选生成及升级命令 |
 
 ## 依赖约束

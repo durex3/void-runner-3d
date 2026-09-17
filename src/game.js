@@ -6,6 +6,8 @@ import {WeaponCombat} from './combat.js';
 import {Garden,COMBOS,PLANTS} from './garden.js';
 import {createWorld,loadNatureAssets,createPickup} from './ruins.js';
 import {AudioService} from './audio.js';
+import {buildCharacterStats} from './character-stats.js';
+import {buildDeviceStatus} from './device-status.js';
 import {EffectsSystem} from './effects.js';
 import {createGameState,resetRunState} from './game-state.js';
 import {InputController} from './input-controller.js';
@@ -89,8 +91,17 @@ export class RelicWorkshopGame{
     this.state.loadout=slot;
     this.state.weapon=this.hero.userData.weapon;
     this.view.renderLoadout(this.hero.userData.rig.name,slot,next=>{if(['title','playing','paused'].includes(this.state.mode))this.equip(next)});
+    this.view.renderStats(this.currentStats());
+    this.view.renderDevices(this.currentDevices());
     return true;
   }
+
+  currentStats(){
+    const role=HEROES[this.hero.userData.rig.name];
+    return buildCharacterStats({state:this.state,hero:this.hero,role});
+  }
+
+  currentDevices(){return buildDeviceStatus({garden:this.garden,plants:PLANTS,combos:COMBOS})}
 
   chooseHero(name){
     if(this.state.mode!=='title'||!Actors.selectHero(this.hero,name))return false;
@@ -222,7 +233,7 @@ export class RelicWorkshopGame{
     this.state.mode='upgrade';
     this.input.clear();
     const choices=createUpgradeChoices({state:this.state,garden:this.garden,heroName:this.hero.userData.rig.name});
-    this.view.showUpgrade(this.state,choices,choice=>{choice.apply();this.state.mode='playing';this.view.hideModal();this.audio.play(700,.2)});
+    this.view.showUpgrade(this.state,choices,choice=>{choice.apply();this.state.mode='playing';this.view.hideModal();this.view.renderStats(this.currentStats());this.audio.play(700,.2)});
   }
 
   finish(win){
@@ -351,7 +362,7 @@ export class RelicWorkshopGame{
     this.view.updateToast(dt,this.state.mode==='playing'||this.state.mode==='title');
     this.updateCamera(dt,now);
     this.uiElapsed+=dt;
-    if(this.uiElapsed>.1){this.view.renderHud(this.state,this.garden,this.enemies);this.uiElapsed=0}
+    if(this.uiElapsed>.1){this.view.renderHud(this.state,this.garden,this.enemies,this.currentStats(),this.currentDevices());this.uiElapsed=0}
     this.renderer.render(this.scene,this.camera);
   }
 
