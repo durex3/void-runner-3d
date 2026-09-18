@@ -25,7 +25,8 @@
 ## Kenney 与项目生成内容
 
 - [Nature Kit 2.1](https://kenney.nl/assets/nature-kit)：CC0，当前加载 `tree_oak.glb`、`rock_largeA.glb` 并调整配色。[原始许可](./public/assets/nature/License.txt)。
-- 遗迹柱廊、地砖、构装伙伴、经验晶体、符文底盘及基础效果由程序化几何体创建；Canvas 纹理、SVG 图标、CSS 界面和 Web Audio 合成音效由项目生成。
+- [Particle Pack 1.1](https://kenney.nl/assets/particle-pack)：CC0，骑士近战使用精选的斩击、冲击环、尘土和命中贴图，并由 Three.js 控制颜色、范围与生命周期。[原始许可](./public/assets/effects/kenney/LICENSE.txt)。
+- 遗迹柱廊、地砖、构装伙伴、经验晶体、符文底盘及其余基础效果由程序化几何体创建；Canvas 纹理、SVG 图标、CSS 界面和 Web Audio 合成音效由项目生成。
 
 ## 保留但不用于当前场景的内容
 

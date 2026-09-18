@@ -42,7 +42,7 @@ for(const type of ['brute','runner']){await page.evaluate(type=>{const g=window.
 assert.equal(await page.evaluate(()=>window.__game.garden.buddies.length),2);
 await page.evaluate(()=>{const g=window.__game;g.spawnEnemy('brute',true);g.damageEnemy(g.enemies.at(-1),10000);g.tick(.016)});await page.click('#harvest');await page.locator('.card').first().click();
 await page.click('#garden-toggle');await page.click('#guide');assert.equal(await page.locator('.guide-combos>div').count(),6);await page.click('#resume');
-await page.evaluate(()=>{const g=window.__game;for(let i=0;i<3;i++){const pos=g.hero.position.clone();pos.x+=i*2-2;pos.z-=3;g.garden.plant(i,pos)}g.state.inv=0;g.hero.visible=true});
+await page.evaluate(()=>{const g=window.__game;g.state.mode='paused';for(const plant of g.garden.plants)g.scene.remove(plant.obj);g.garden.plants.length=0;for(let i=0;i<3;i++){const pos=g.hero.position.clone();pos.x+=i*2-2;pos.z-=3;g.garden.plant(i,pos)}g.state.inv=0;g.hero.visible=true});
 await page.waitForFunction(()=>[...document.querySelectorAll('.device-row>strong')].map(element=>element.textContent).join(',')==='1,1,1');assert.equal(await page.locator('#device-total').textContent(),'3');
 await page.screenshot({path:'test-results/gameplay.png'});
 await page.evaluate(()=>{const g=window.__game;g.state.inv=0;g.hurt(10000)});assert.equal(await page.evaluate(()=>window.__game.state.mode),'lost');await page.click('#restart');assert.equal(await page.evaluate(()=>window.__game.state.hp),100);

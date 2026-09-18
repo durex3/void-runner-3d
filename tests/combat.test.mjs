@@ -5,11 +5,11 @@ import {WeaponCombat} from '../src/combat.js';
 import {HEROES} from '../src/loadouts.js';
 
 function setup(role,slot){
- const scene=new T.Scene(),hero=new T.Group(),state={damage:1,rate:1,shot:0},enemies=[],hits=[],pulses=[],links=[];
+ const scene=new T.Scene(),hero=new T.Group(),state={damage:1,rate:1,shot:0},enemies=[],hits=[],pulses=[],links=[],meleeEvents=[];
  hero.userData.profile=HEROES[role].weapons[slot];const garden={combos:new Set(),onShot(){},electrify(){},pulse(...args){pulses.push(args)}};
- const combat=new WeaponCombat({scene,hero,state,enemies:()=>enemies,garden,damage:(e,d,source)=>{e.hp-=d;hits.push({e,d,source});if(e.hp<=0)e.dead=true},effect:obj=>links.push(obj)});
+ const combat=new WeaponCombat({scene,hero,state,enemies:()=>enemies,garden,damage:(e,d,source)=>{e.hp-=d;hits.push({e,d,source});if(e.hp<=0)e.dead=true},effect:obj=>links.push(obj),onMeleeImpact:event=>meleeEvents.push(event)});
  const enemy=(z,x=0,type='brute')=>{const obj=new T.Group();obj.position.set(x,0,z);const e={obj,size:.4,hp:1000,type,slow:0};enemies.push(e);return e};
- const step=t=>{for(let time=0;time<t;time+=.01)combat.step(Math.min(.01,t-time))};return {scene,combat,hero,state,enemies,hits,pulses,links,garden,enemy,step};
+ const step=t=>{for(let time=0;time<t;time+=.01)combat.step(Math.min(.01,t-time))};return {scene,combat,hero,state,enemies,hits,pulses,links,meleeEvents,garden,enemy,step};
 }
 test('bow hits three enemies in spatial order only once each, with diminishing damage',()=>{const s=setup('Ranger',1);const far=s.enemy(8),near=s.enemy(3),middle=s.enemy(5),fourth=s.enemy(10);s.combat.attack();s.step(.5);assert.deepEqual(s.hits.map(h=>h.e),[near,middle,far]);assert.equal(near.hp,944);assert.ok(Math.abs(middle.hp-955.2)<1e-9);assert.ok(Math.abs(far.hp-964.16)<1e-9);assert.equal(fourth.hp,1000);assert.equal(s.combat.bullets.length,0)});
 test('ordinary crossbow stops on the nearest target',()=>{const s=setup('Ranger',0),near=s.enemy(3),far=s.enemy(4);s.combat.attack();s.step(.3);assert.equal(near.hp,970);assert.equal(far.hp,1000)});
@@ -23,3 +23,4 @@ test('electric combo applies to chain lightning but not nature or magic orb',()=
 test('melee has real windup and a front cone; rear and out-of-range enemies are excluded',()=>{const s=setup('Knight',0),front=s.enemy(2),side=s.enemy(1,2),rear=s.enemy(-2.5),far=s.enemy(4);s.combat.attack();s.combat.step(.17);assert.equal(front.hp,1000);s.combat.step(.02);assert.equal(front.hp,962);assert.equal(side.hp,1000);assert.equal(rear.hp,1000);assert.equal(far.hp,1000);assert.equal(s.combat.bullets.length,0)});
 test('switch cancels uncommitted melee, while moving out of its reach avoids the hit',()=>{const s=setup('Knight',1),e=s.enemy(3);s.combat.attack();s.combat.cancelBurst();s.step(.5);assert.equal(e.hp,1000);s.combat.attack();e.obj.position.z=5;s.step(.5);assert.equal(e.hp,1000)});
 test('mace staggers ordinary enemies with reduced boss duration',()=>{const s=setup('Knight',2),e=s.enemy(2),boss=s.enemy(2,.4,'boss');s.combat.attack();s.step(.3);assert.equal(e.hp,948);assert.equal(e.stagger,.45);assert.ok(Math.abs(boss.stagger-.09)<1e-9)});
+test('melee visuals fire on damage resolution with only the positions actually hit',()=>{const s=setup('Knight',0),front=s.enemy(2),rear=s.enemy(-2);s.combat.attack();s.combat.step(.17);assert.equal(s.meleeEvents.length,0);s.combat.step(.02);assert.equal(s.meleeEvents.length,1);assert.equal(s.meleeEvents[0].profile.model,'sword_1handed');assert.deepEqual(s.meleeEvents[0].hits.map(position=>position.toArray()),[front.obj.position.toArray()]);assert.equal(rear.hp,1000);s.combat.attack();s.combat.cancelBurst();s.step(.3);assert.equal(s.meleeEvents.length,1)});

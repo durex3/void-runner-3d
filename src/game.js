@@ -9,6 +9,7 @@ import {AudioService} from './audio.js';
 import {buildCharacterStats} from './character-stats.js';
 import {buildDeviceStatus} from './device-status.js';
 import {EffectsSystem} from './effects.js';
+import {MeleeVfx} from './melee-vfx.js';
 import {createGameState,resetRunState} from './game-state.js';
 import {InputController} from './input-controller.js';
 import {createSceneRuntime,createRing} from './scene-runtime.js';
@@ -35,6 +36,8 @@ export class RelicWorkshopGame{
     document.body.dataset.actors='loaded';
     this.view.setBest(this.best);
     this.setupRuntime();
+    await this.meleeVfx.ready;
+    document.body.dataset.effects='loaded';
     this.bindControls();
     this.equip();
     this.exposeTestApi();
@@ -66,11 +69,13 @@ export class RelicWorkshopGame{
     this.hero=Actors.createHero(this.scene).hero;
     this.hero.add(createRing(.8,.05,0xffffff));
     this.effects=new EffectsSystem({scene:this.scene,animateActor:Actors.animateActor,disposeActor:Actors.disposeActor});
+    this.meleeVfx=new MeleeVfx({effects:this.effects,camera:this.camera});
     this.garden=new Garden({scene:this.scene,hero:this.hero,state:this.state,enemies:()=>this.enemies,damage:(...args)=>this.damageEnemy(...args),toast:message=>this.view.showToast(message),burst:(...args)=>this.effects.burst(...args)});
     this.combat=new WeaponCombat({
       scene:this.scene,hero:this.hero,state:this.state,enemies:()=>this.enemies,damage:(...args)=>this.damageEnemy(...args),garden:this.garden,
       onFire:profile=>{Actors.kickActor(this.hero,this.state.rate);this.audio.play([600,180,850,240][profile.type],.07,profile.type===1?'sawtooth':'triangle',.018)},
       effect:(object,life)=>this.effects.add(object,life,{fixed:true}),
+      onMeleeImpact:event=>this.meleeVfx.play(event),
     });
     this.lastFrame=performance.now();
     this.uiElapsed=0;
@@ -172,7 +177,9 @@ export class RelicWorkshopGame{
     const size=type==='boss'?2.1:type==='runner'?.6:.85;
     if(elite)this.addEliteCrown(object,type);
     const hp=elite?150+this.state.wave*15:type==='boss'?1500:type==='runner'?25:45+this.state.wave*5;
-    this.enemies.push({obj:object,type,elite,stunned:false,slow:0,hp,maxHp:hp,size,speed:type==='boss'?1.1:type==='runner'?3.5:1.6+this.state.wave*.06,attack:1.5});
+    const enemy={obj:object,type,elite,stunned:false,slow:0,hp,maxHp:hp,size,speed:type==='boss'?1.1:type==='runner'?3.5:1.6+this.state.wave*.06,attack:1.5};
+    this.effects.attachEnemyStatus(enemy);
+    this.enemies.push(enemy);
   }
 
   addEliteCrown(object,type){
@@ -305,8 +312,10 @@ export class RelicWorkshopGame{
     for(const enemy of this.enemies){
       if(enemy.dead||enemy.stunned)continue;
       enemy.stagger=Math.max(0,(enemy.stagger||0)-dt);
-      if(enemy.stagger>0){Actors.animateActor(enemy.obj,dt,this.state.time,0);continue}
+      this.effects.updateEnemyStatus(enemy,this.state.time);
+      if(enemy.stagger>0){Actors.animateActor(enemy.obj,dt*.22,this.state.time,0);continue}
       enemy.slow=Math.max(0,(enemy.slow||0)-dt);
+      this.effects.updateEnemyStatus(enemy,this.state.time);
       const delta=this.hero.position.clone().sub(enemy.obj.position),distance=delta.length();delta.normalize();
       const speed=enemy.speed*(enemy.slow>0?.55:1);
       if(enemy.type!=='spitter'||distance>8)enemy.obj.position.addScaledVector(delta,speed*dt);
@@ -381,9 +390,9 @@ export class RelicWorkshopGame{
     if(!new URLSearchParams(location.search).has('test'))return;
     const game=this;
     window.__game={
-      THREE:T,actors:Actors,state:this.state,hero:this.hero,garden:this.garden,combat:this.combat,
+      THREE:T,actors:Actors,state:this.state,hero:this.hero,garden:this.garden,combat:this.combat,effects:this.effects,meleeVfx:this.meleeVfx,
       get enemies(){return game.enemies},get drops(){return game.drops},get bullets(){return game.combat.bullets},get hazards(){return game.hazards},get corpses(){return game.effects.corpses},
-      selectHero:Actors.selectHero,chooseHero:name=>game.chooseHero(name),returnToTitle:()=>game.returnToTitle(),equip:slot=>game.equip(slot),attack:()=>game.attack(),tick:dt=>game.tick(dt),damageEnemy:(...args)=>game.damageEnemy(...args),hurt:amount=>game.hurt(amount),levelUp:()=>game.levelUp(),finish:win=>game.finish(win),start:()=>game.start(),spawnEnemy:(...args)=>game.spawnEnemy(...args),renderer:this.renderer,scene:this.scene,
+      selectHero:Actors.selectHero,chooseHero:name=>game.chooseHero(name),returnToTitle:()=>game.returnToTitle(),equip:slot=>game.equip(slot),attack:()=>game.attack(),tick:dt=>game.tick(dt),damageEnemy:(...args)=>game.damageEnemy(...args),hurt:amount=>game.hurt(amount),levelUp:()=>game.levelUp(),finish:win=>game.finish(win),start:()=>game.start(),spawnEnemy:(...args)=>game.spawnEnemy(...args),renderer:this.renderer,scene:this.scene,camera:this.camera,
     };
   }
 }

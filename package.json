@@ -7,7 +7,7 @@
     "dev": "vite --host 127.0.0.1 --port 5188",
     "build": "vite build",
     "test": "node --test tests/architecture.test.mjs tests/character-stats.test.mjs tests/device-status.test.mjs tests/garden.test.mjs tests/combat.test.mjs && node tests/browser.mjs",
-    "test:weapons": "node tests/role-weapons.mjs && node tests/mechanics-browser.mjs && node tests/knight-browser.mjs"
+    "test:weapons": "node tests/role-weapons.mjs && node tests/mechanics-browser.mjs && node tests/knight-browser.mjs && node tests/knight-vfx.mjs"
   },
   "dependencies": {
     "three": "0.180.0"

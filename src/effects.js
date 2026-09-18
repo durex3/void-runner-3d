@@ -8,22 +8,63 @@ export class EffectsSystem{
     this.effects=[];
     this.corpses=[];
     this.geometry=new T.IcosahedronGeometry(1,0);
+    this.statusGeometry={
+      slow:new T.RingGeometry(.82,1,48),
+      stagger:new T.OctahedronGeometry(.18,0),
+    };
     this.materials={
       glow:new T.MeshBasicMaterial({color:0xfbc47b}),
       hurt:new T.MeshBasicMaterial({color:0xff866c}),
+      slow:new T.MeshBasicMaterial({color:0x78d9e7,transparent:true,opacity:.72,side:T.DoubleSide,depthWrite:false,toneMapped:false}),
+      stagger:new T.MeshBasicMaterial({color:0xd9fff7,transparent:true,opacity:.95,depthWrite:false,toneMapped:false}),
+      shock:new T.MeshBasicMaterial({color:0x9ff7ee,toneMapped:false}),
     };
   }
 
-  add(object,life,{fixed=false,velocity=new T.Vector3(),dispose=false}={}){
+  attachEnemyStatus(enemy){
+    const group=new T.Group(),slow=new T.Mesh(this.statusGeometry.slow,this.materials.slow),stagger=new T.Group();
+    slow.rotation.x=-Math.PI/2;
+    slow.position.y=.08;
+    slow.renderOrder=3;
+    for(let index=0;index<3;index++){
+      const marker=new T.Mesh(this.statusGeometry.stagger,this.materials.stagger),angle=index*Math.PI*2/3;
+      marker.position.set(Math.cos(angle)*.72,0,Math.sin(angle)*.72);
+      stagger.add(marker);
+    }
+    stagger.position.y=1.35+Math.min(enemy.size,1.5)*.35;
+    slow.visible=stagger.visible=false;
+    group.add(slow,stagger);
+    enemy.obj.add(group);
+    enemy.statusVfx={group,slow,stagger};
+  }
+
+  updateEnemyStatus(enemy,time){
+    const status=enemy.statusVfx;if(!status)return;
+    status.slow.visible=enemy.slow>0;
+    status.stagger.visible=enemy.stagger>0;
+    if(status.slow.visible){
+      const pulse=1+.07*Math.sin(time*8);
+      status.slow.scale.setScalar((enemy.size+.45)*pulse);
+      status.slow.rotation.z=time*.9;
+    }
+    if(status.stagger.visible){
+      status.stagger.rotation.y=time*5.5;
+      status.stagger.position.y=1.35+Math.min(enemy.size,1.5)*.35+Math.sin(time*12)*.06;
+      status.stagger.scale.setScalar(.9+Math.min(enemy.size,1.5)*.16);
+    }
+  }
+
+  add(object,life,{fixed=false,velocity=new T.Vector3(),dispose=false,update=null,cleanup=null}={}){
     if(this.effects.length>=180)return false;
     this.scene.add(object);
-    this.effects.push({obj:object,life,v:velocity,fixed,dispose});
+    this.effects.push({obj:object,life,maxLife:life,age:0,v:velocity,fixed,dispose,update,cleanup});
     return true;
   }
 
   burst(position,color=0xfbc47b,count=8){
     for(let index=0;index<count&&this.effects.length<180;index++){
-      const object=new T.Mesh(this.geometry,color===0xfbc47b?this.materials.glow:this.materials.hurt);
+      const material=color===0xfbc47b?this.materials.glow:color===0x9ff7ee?this.materials.shock:this.materials.hurt;
+      const object=new T.Mesh(this.geometry,material);
       object.position.set(position.x,.7,position.z);
       object.scale.setScalar(.07);
       object.castShadow=object.receiveShadow=true;
@@ -49,22 +90,29 @@ export class EffectsSystem{
     if(!['playing','title'].includes(mode))return;
     for(const effect of this.effects){
       effect.life-=dt;
+      effect.age+=dt;
       effect.obj.position.addScaledVector(effect.v,dt);
       if(!effect.fixed)effect.v.y-=dt*8;
+      effect.update?.({object:effect.obj,dt,age:effect.age,life:effect.life,progress:Math.min(1,effect.age/effect.maxLife)});
     }
     this.effects=this.effects.filter(effect=>{
       if(effect.life>0)return true;
-      this.scene.remove(effect.obj);
-      if(effect.dispose){
-        effect.obj.geometry?.dispose();
-        effect.obj.material?.dispose();
-      }
+      this.removeEffect(effect);
       return false;
     });
   }
 
+  removeEffect(effect){
+    this.scene.remove(effect.obj);
+    effect.cleanup?.(effect.obj);
+    if(effect.dispose){
+      effect.obj.geometry?.dispose();
+      effect.obj.material?.dispose();
+    }
+  }
+
   clear(){
-    for(const effect of this.effects)this.scene.remove(effect.obj);
+    for(const effect of this.effects)this.removeEffect(effect);
     for(const corpse of this.corpses)this.disposeActor(corpse.obj);
     this.effects.length=0;
     this.corpses.length=0;
