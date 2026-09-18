@@ -26,7 +26,7 @@
 
 - [Nature Kit 2.1](https://kenney.nl/assets/nature-kit)：CC0，当前加载 `tree_oak.glb`、`rock_largeA.glb` 并调整配色。[原始许可](./public/assets/nature/License.txt)。
 - [Particle Pack 1.1](https://kenney.nl/assets/particle-pack)：CC0，骑士近战使用精选的斩击、冲击环、尘土和命中贴图，并由 Three.js 控制颜色、范围与生命周期。[原始许可](./public/assets/effects/kenney/LICENSE.txt)。
-- [Combat FX 1.1](https://ragnapixel.itch.io/combat-fx)：用户购买的 RagnaPixel 资源包，按随包 `public-license.txt` 使用。当前提取四张透明首帧至 `public/assets/effects/combatfx/`，用于骑士三把武器的命中强化；原始 ZIP 保留在用户下载目录，未复制到仓库。
+- [Combat FX 1.1](https://ragnapixel.itch.io/combat-fx)：用户购买的 RagnaPixel 资源包，按随包 `public-license.txt` 使用。当前接入 `combat-sheet.png` 的逐帧 Sprite Sheet，并保留四张透明首帧，用于骑士命中强化和远程武器差异化反馈；原始 ZIP 保留在 `references/purchased/Combat FX 1.1/`，未修改。
 - 遗迹柱廊、地砖、构装伙伴、经验晶体、符文底盘及其余基础效果由程序化几何体创建；Canvas 纹理、SVG 图标、CSS 界面和 Web Audio 合成音效由项目生成。骑士三把武器的差异化命中音色不使用外部音频文件。
 
 下一阶段的工程师、游侠和德鲁伊远程反馈优先复用现有模型、Kenney Particle Pack 贴图与程序化几何体；若后续引入新的外部贴图、音频或动作文件，必须先补充本文件及对应许可副本，不能仅在代码中记录路径。

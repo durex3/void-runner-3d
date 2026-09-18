@@ -35,7 +35,7 @@ export class WeaponCombat{
     const p=shot.profile;this.onFire(p);
     for(let i=0;i<p.count&&this.bullets.length<160;i++){
       const dir=shot.dir.clone().applyAxisAngle(new T.Vector3(0,1,0),p.effect==='shotgun'?(i-(p.count-1)/2)*.14:0),v=dir.multiplyScalar(p.speed);
-      const obj=projectile(this.hero.position.clone().setY(1),v,p.type);this.scene.add(obj);
+      const obj=projectile(this.hero.position.clone().setY(1),v,p.type,false,p.effect);this.scene.add(obj);
       this.bullets.push({obj,v,life:p.life,weapon:p.type,damage:shot.damage,profile:p,hit:new Set(),remaining:p.pierce||1,distance:0,knocked:shot.knocked});
     }
   }
