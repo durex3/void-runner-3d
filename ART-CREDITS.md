@@ -1,6 +1,6 @@
 # 美术来源与许可
 
-核对日期：2026-09-17。当前采用 KayKit 角色与道具、Kenney 树岩及项目程序化美术。仅复制所需素材，未修改用户原始资源。
+核对日期：2026-09-18。当前采用 KayKit 角色与道具、Kenney 树岩及项目程序化美术。仅复制所需素材，未修改用户原始资源。
 
 ## KayKit
 
@@ -26,7 +26,9 @@
 
 - [Nature Kit 2.1](https://kenney.nl/assets/nature-kit)：CC0，当前加载 `tree_oak.glb`、`rock_largeA.glb` 并调整配色。[原始许可](./public/assets/nature/License.txt)。
 - [Particle Pack 1.1](https://kenney.nl/assets/particle-pack)：CC0，骑士近战使用精选的斩击、冲击环、尘土和命中贴图，并由 Three.js 控制颜色、范围与生命周期。[原始许可](./public/assets/effects/kenney/LICENSE.txt)。
-- 遗迹柱廊、地砖、构装伙伴、经验晶体、符文底盘及其余基础效果由程序化几何体创建；Canvas 纹理、SVG 图标、CSS 界面和 Web Audio 合成音效由项目生成。
+- 遗迹柱廊、地砖、构装伙伴、经验晶体、符文底盘及其余基础效果由程序化几何体创建；Canvas 纹理、SVG 图标、CSS 界面和 Web Audio 合成音效由项目生成。骑士三把武器的差异化命中音色不使用外部音频文件。
+
+下一阶段的工程师、游侠和德鲁伊远程反馈优先复用现有模型、Kenney Particle Pack 贴图与程序化几何体；若后续引入新的外部贴图、音频或动作文件，必须先补充本文件及对应许可副本，不能仅在代码中记录路径。
 
 ## 保留但不用于当前场景的内容
 
