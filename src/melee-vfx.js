@@ -30,6 +30,7 @@ export class MeleeVfx{
     this.ready=Promise.all(Object.entries(TEXTURES).map(async([key,file])=>{
     const texture=await loader.loadAsync(file.startsWith('/')?file:`${ASSET_ROOT}${file}`);
       texture.colorSpace=T.SRGBColorSpace;
+      if(key==='combatAtlas'){texture.magFilter=T.NearestFilter;texture.minFilter=T.NearestFilter;texture.generateMipmaps=false;}
       this.textures[key]=texture;
     }));
   }
