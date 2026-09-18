@@ -10,6 +10,7 @@ import {buildCharacterStats} from './character-stats.js';
 import {buildDeviceStatus} from './device-status.js';
 import {EffectsSystem} from './effects.js';
 import {MeleeVfx} from './melee-vfx.js';
+import {RemoteVfx} from './remote-vfx.js';
 import {createGameState,resetRunState} from './game-state.js';
 import {InputController} from './input-controller.js';
 import {createSceneRuntime,createRing} from './scene-runtime.js';
@@ -47,7 +48,7 @@ export class RelicWorkshopGame{
     document.body.dataset.actors='loaded';
     this.view.setBest(this.best);
     this.setupRuntime();
-    await this.meleeVfx.ready;
+    await Promise.all([this.meleeVfx.ready,this.remoteVfx.ready]);
     document.body.dataset.effects='loaded';
     this.bindControls();
     this.equip();
@@ -81,11 +82,13 @@ export class RelicWorkshopGame{
     this.hero.add(createRing(.8,.05,0xffffff));
     this.effects=new EffectsSystem({scene:this.scene,animateActor:Actors.animateActor,disposeActor:Actors.disposeActor});
     this.meleeVfx=new MeleeVfx({effects:this.effects,camera:this.camera});
+    this.remoteVfx=new RemoteVfx({effects:this.effects});
     this.garden=new Garden({scene:this.scene,hero:this.hero,state:this.state,enemies:()=>this.enemies,damage:(...args)=>this.damageEnemy(...args),toast:message=>this.view.showToast(message),burst:(...args)=>this.effects.burst(...args)});
     this.combat=new WeaponCombat({
       scene:this.scene,hero:this.hero,state:this.state,enemies:()=>this.enemies,damage:(...args)=>this.damageEnemy(...args),garden:this.garden,
-      onFire:profile=>{Actors.kickActor(this.hero,this.state.rate);this.audio.play([600,180,850,240][profile.type],.07,profile.type===1?'sawtooth':'triangle',.018)},
+      onFire:profile=>{Actors.kickActor(this.hero,this.state.rate);const direction=new T.Vector3(Math.sin(this.hero.rotation.y),0,Math.cos(this.hero.rotation.y));this.remoteVfx.fire(profile,this.hero.position,direction);this.audio.play([600,180,850,240][profile.type],.07,profile.type===1?'sawtooth':'triangle',.018)},
       effect:(object,life)=>this.effects.add(object,life,{fixed:true}),
+      onHit:event=>this.remoteVfx.hit(event.profile,event.position,event.kind),
       onMeleeImpact:event=>{this.meleeVfx.play(event);this.applyMeleeFeedback(event)},
     });
     this.lastFrame=performance.now();
@@ -431,7 +434,7 @@ export class RelicWorkshopGame{
     if(!new URLSearchParams(location.search).has('test'))return;
     const game=this;
     window.__game={
-      THREE:T,actors:Actors,state:this.state,hero:this.hero,garden:this.garden,combat:this.combat,effects:this.effects,meleeVfx:this.meleeVfx,audio:this.audio,
+      THREE:T,actors:Actors,state:this.state,hero:this.hero,garden:this.garden,combat:this.combat,effects:this.effects,meleeVfx:this.meleeVfx,remoteVfx:this.remoteVfx,audio:this.audio,
       get enemies(){return game.enemies},get drops(){return game.drops},get bullets(){return game.combat.bullets},get hazards(){return game.hazards},get corpses(){return game.effects.corpses},
       selectHero:Actors.selectHero,chooseHero:name=>game.chooseHero(name),returnToTitle:()=>game.returnToTitle(),equip:slot=>game.equip(slot),attack:()=>game.attack(),tick:dt=>game.tick(dt),damageEnemy:(...args)=>game.damageEnemy(...args),hurt:amount=>game.hurt(amount),levelUp:()=>game.levelUp(),finish:win=>game.finish(win),start:()=>game.start(),spawnEnemy:(...args)=>game.spawnEnemy(...args),renderer:this.renderer,scene:this.scene,camera:this.camera,get lastMeleeFeedback(){return game.lastMeleeFeedback},
     };

@@ -13,8 +13,9 @@ try{
   await page.click('[data-character="Knight"]');
   await page.click('#start');
   const textureState=await page.evaluate(()=>Object.fromEntries(Object.entries(__game.meleeVfx.textures).map(([key,texture])=>[key,{width:texture.image?.naturalWidth||texture.image?.width,height:texture.image?.naturalHeight||texture.image?.height}])));
-  assert.equal(Object.keys(textureState).length,6);
-  assert.ok(Object.values(textureState).every(texture=>texture.width===512&&texture.height===512));
+  assert.equal(Object.keys(textureState).length,10);
+  assert.ok(Object.entries(textureState).filter(([key])=>!key.startsWith('combat')).every(([,texture])=>texture.width===512&&texture.height===512));
+  assert.ok(Object.entries(textureState).filter(([key])=>key.startsWith('combat')).every(([,texture])=>texture.width===64&&texture.height===64));
 
   const captures=[];
   for(let slot=0;slot<3;slot++){

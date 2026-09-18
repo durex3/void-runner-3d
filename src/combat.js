@@ -3,7 +3,7 @@ import {projectile,beam} from './projectiles.js';
 
 // Combat simulation is independent of input/render timing. No wall-clock timers.
 export class WeaponCombat{
-  constructor({scene,hero,state,enemies,damage,garden,onFire=()=>{},effect=()=>{},onMeleeImpact=()=>{}}){Object.assign(this,{scene,hero,state,enemies,damage,garden,onFire,effect,onMeleeImpact});this.bullets=[];this.pending=[]}
+  constructor({scene,hero,state,enemies,damage,garden,onFire=()=>{},effect=()=>{},onMeleeImpact=()=>{},onHit=()=>{}}){Object.assign(this,{scene,hero,state,enemies,damage,garden,onFire,effect,onMeleeImpact,onHit});this.bullets=[];this.pending=[]}
   reset(){for(const b of this.bullets)this.scene.remove(b.obj);this.bullets.length=0;this.pending.length=0;this.swing=null;for(const e of this.enemies())delete e.push}
   cancelBurst(){this.pending=this.pending.filter(p=>!['burst','melee'].includes(p.kind));this.swing=null}
   targets(){return this.enemies().filter(e=>!e.dead&&!e.stunned)}
@@ -39,8 +39,8 @@ export class WeaponCombat{
       this.bullets.push({obj,v,life:p.life,weapon:p.type,damage:shot.damage,profile:p,hit:new Set(),remaining:p.pierce||1,distance:0,knocked:shot.knocked});
     }
   }
-  hit(e,amount,profile,electric=false){if(e.dead||e.stunned)return;const bonus=electric&&this.garden.combos.has('snare')&&e.slow>0?1.7:1;this.damage(e,amount*bonus,{weapon:profile.type,model:profile.model})}
-  impact(p){for(const e of this.targets()){if(e.obj.position.distanceTo(p.center)>p.shot.profile.radius)continue;e.slow=Math.max(e.slow||0,p.shot.profile.slow);this.hit(e,p.shot.damage,p.shot.profile)}this.garden.pulse(p.center,0,p.shot.profile.radius,.2)}
+  hit(e,amount,profile,electric=false,kind='projectile'){if(e.dead||e.stunned)return;const bonus=electric&&this.garden.combos.has('snare')&&e.slow>0?1.7:1;this.damage(e,amount*bonus,{weapon:profile.type,model:profile.model});this.onHit({profile,enemy:e,position:e.obj.position.clone(),kind:electric?'electric':kind})}
+  impact(p){for(const e of this.targets()){if(e.obj.position.distanceTo(p.center)>p.shot.profile.radius)continue;e.slow=Math.max(e.slow||0,p.shot.profile.slow);this.hit(e,p.shot.damage,p.shot.profile,false,'nature')}this.garden.pulse(p.center,0,p.shot.profile.radius,.2);this.onHit({profile:p.shot.profile,position:p.center.clone(),kind:'nature-area'})}
   melee(shot){const p=shot.profile,hits=[],targets=[];for(const e of this.targets()){const delta=e.obj.position.clone().sub(this.hero.position).setY(0);if(delta.length()>p.range)continue;if(delta.lengthSq()>1e-8&&delta.normalize().dot(shot.dir)<Math.cos(p.arc*Math.PI/360))continue;hits.push(e.obj.position.clone());targets.push(e);this.hit(e,shot.damage,p);if(p.knock)e.push=shot.dir.clone().multiplyScalar(p.knock*(e.type==='boss'?.2:1));if(p.stagger)e.stagger=Math.max(e.stagger||0,p.stagger*(e.type==='boss'?.2:1))}this.onMeleeImpact({profile:p,origin:this.hero.position.clone(),direction:shot.dir.clone(),hits,targets})}
   step(dt){
     if(this.swing){this.swing.time-=dt;if(this.swing.time<=0)this.swing=null}
@@ -59,11 +59,11 @@ export class WeaponCombat{
         if(b.remaining<=0)break;if(e.dead||e.stunned)continue;b.hit.add(e);
         const distance=b.distance+length*t,p=b.profile,center=e.obj.position.clone();
         const falloff=p.effect==='shotgun'?T.MathUtils.clamp(1-Math.max(0,distance-4)*.075,.55,1):1;
-        this.hit(e,b.damage*falloff,p);
+        this.hit(e,b.damage*falloff,p,false,p.effect==='orb'?'direct':'projectile');
         if(p.effect==='shotgun'&&!b.knocked.has(e)){b.knocked.add(e);e.push=b.v.clone().setY(0).normalize().multiplyScalar(e.type==='boss'?1.9:9.5)}
         if(p.effect==='orb'){
           this.garden.pulse(center,2,p.radius,.2);
-          for(const other of this.targets())if(other!==e&&other.obj.position.distanceTo(center)<=p.radius)this.hit(other,b.damage*p.splash,p);
+          for(const other of this.targets())if(other!==e&&other.obj.position.distanceTo(center)<=p.radius)this.hit(other,b.damage*p.splash,p,false,'splash');
         }
         b.remaining--;b.damage*=p.falloff||1;if(!b.remaining){b.life=0;break}
       }

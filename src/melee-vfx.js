@@ -8,12 +8,16 @@ const TEXTURES={
   dustHeavy:'dirt_03.png',
   shockwave:'circle_02.png',
   impact:'scorch_01.png',
+  combatSword:'/assets/effects/combatfx/sword.png',
+  combatHeavy:'/assets/effects/combatfx/heavy.png',
+  combatMace:'/assets/effects/combatfx/mace.png',
+  combatHit:'/assets/effects/combatfx/hit.png',
 };
 
 const STYLE={
-  sword_1handed:{slash:'slashShield',slashSize:6.4,slashAspect:.7,slashLife:.24,slashColor:0xffdda3,reach:1.25,baseAngle:0,impactSize:1.4,impactColor:0xffd08a},
-  sword_2handed:{slash:'slashHeavy',slashSize:8.2,slashAspect:.56,slashLife:.5,slashColor:0xffc36f,reach:2.15,baseAngle:Math.PI/2,dust:'dustHeavy',dustSize:5.6,dustColor:0xb39b78,dustOpacity:.68,dustLife:.65,landing:'impact',landingSize:4.1,landingColor:0xffb45f,landingOpacity:.94,landingLife:.42,impactSize:2.1,impactColor:0xffc477,shards:3},
-  Skeleton_Mace:{slash:'shockwave',slashSize:6.2,slashLife:.52,slashColor:0x8ff5e9,reach:1.2,dust:'dustLight',dustSize:4,dustColor:0x718f8d,dustOpacity:.56,dustLife:.62,landing:'impact',landingSize:2.8,landingOffset:0,landingColor:0xd8fff7,landingOpacity:.9,landingLife:.34,impactSize:2.2,impactColor:0xd8fff8,coreSize:2.8,coreLife:.28,shards:6,ground:true,echo:true},
+  sword_1handed:{slash:'slashShield',impactTexture:'combatSword',slashSize:6.4,slashAspect:.7,slashLife:.24,slashColor:0xffdda3,reach:1.25,baseAngle:0,impactSize:1.4,impactColor:0xffd08a},
+  sword_2handed:{slash:'slashHeavy',impactTexture:'combatHeavy',slashSize:8.2,slashAspect:.56,slashLife:.5,slashColor:0xffc36f,reach:2.15,baseAngle:Math.PI/2,dust:'dustHeavy',dustSize:5.6,dustColor:0xb39b78,dustOpacity:.68,dustLife:.65,landing:'impact',landingSize:4.1,landingColor:0xffb45f,landingOpacity:.94,landingLife:.42,impactSize:2.1,impactColor:0xffc477,shards:3},
+  Skeleton_Mace:{slash:'shockwave',impactTexture:'combatMace',slashSize:6.2,slashLife:.52,slashColor:0x8ff5e9,reach:1.2,dust:'dustLight',dustSize:4,dustColor:0x718f8d,dustOpacity:.56,dustLife:.62,landing:'impact',landingSize:2.8,landingOffset:0,landingColor:0xd8fff7,landingOpacity:.9,landingLife:.34,impactSize:2.2,impactColor:0xd8fff8,coreSize:2.8,coreLife:.28,shards:6,ground:true,echo:true},
 };
 
 export class MeleeVfx{
@@ -23,7 +27,7 @@ export class MeleeVfx{
     this.textures={};
     this.planeGeometry=new T.PlaneGeometry(1,1);
     this.ready=Promise.all(Object.entries(TEXTURES).map(async([key,file])=>{
-      const texture=await loader.loadAsync(`${ASSET_ROOT}${file}`);
+    const texture=await loader.loadAsync(file.startsWith('/')?file:`${ASSET_ROOT}${file}`);
       texture.colorSpace=T.SRGBColorSpace;
       this.textures[key]=texture;
     }));
@@ -41,7 +45,7 @@ export class MeleeVfx{
     if(style.echo)this.ground(style.slash,center,facing,style.slashSize*.62,style.slashLife*.72,0xe9fffc,'shock-core',{start:.35,end:.92,opacity:.78});
     if(style.coreSize)this.sprite('impact',center.clone().setY(.72),style.coreSize,style.coreLife??.18,style.impactColor,'impact-core');
     for(const position of hits){
-      this.sprite('impact',position.clone().setY(1),style.impactSize,.24,style.impactColor);
+      this.sprite(style.impactTexture||'impact',position.clone().setY(1),style.impactSize,.24,style.impactColor);
       if(style.shards)this.effects.burst(position,profile.model==='Skeleton_Mace'?0x9ff7ee:0xfbc47b,style.shards);
     }
     return true;
