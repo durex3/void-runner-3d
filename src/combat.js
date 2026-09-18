@@ -39,9 +39,9 @@ export class WeaponCombat{
       this.bullets.push({obj,v,life:p.life,weapon:p.type,damage:shot.damage,profile:p,hit:new Set(),remaining:p.pierce||1,distance:0,knocked:shot.knocked});
     }
   }
-  hit(e,amount,profile,electric=false){if(e.dead||e.stunned)return;const bonus=electric&&this.garden.combos.has('snare')&&e.slow>0?1.7:1;this.damage(e,amount*bonus,{weapon:profile.type})}
+  hit(e,amount,profile,electric=false){if(e.dead||e.stunned)return;const bonus=electric&&this.garden.combos.has('snare')&&e.slow>0?1.7:1;this.damage(e,amount*bonus,{weapon:profile.type,model:profile.model})}
   impact(p){for(const e of this.targets()){if(e.obj.position.distanceTo(p.center)>p.shot.profile.radius)continue;e.slow=Math.max(e.slow||0,p.shot.profile.slow);this.hit(e,p.shot.damage,p.shot.profile)}this.garden.pulse(p.center,0,p.shot.profile.radius,.2)}
-  melee(shot){const p=shot.profile,hits=[];for(const e of this.targets()){const delta=e.obj.position.clone().sub(this.hero.position).setY(0);if(delta.length()>p.range)continue;if(delta.lengthSq()>1e-8&&delta.normalize().dot(shot.dir)<Math.cos(p.arc*Math.PI/360))continue;hits.push(e.obj.position.clone());this.hit(e,shot.damage,p);if(p.knock)e.push=shot.dir.clone().multiplyScalar(p.knock*(e.type==='boss'?.2:1));if(p.stagger)e.stagger=Math.max(e.stagger||0,p.stagger*(e.type==='boss'?.2:1))}this.onMeleeImpact({profile:p,origin:this.hero.position.clone(),direction:shot.dir.clone(),hits})}
+  melee(shot){const p=shot.profile,hits=[],targets=[];for(const e of this.targets()){const delta=e.obj.position.clone().sub(this.hero.position).setY(0);if(delta.length()>p.range)continue;if(delta.lengthSq()>1e-8&&delta.normalize().dot(shot.dir)<Math.cos(p.arc*Math.PI/360))continue;hits.push(e.obj.position.clone());targets.push(e);this.hit(e,shot.damage,p);if(p.knock)e.push=shot.dir.clone().multiplyScalar(p.knock*(e.type==='boss'?.2:1));if(p.stagger)e.stagger=Math.max(e.stagger||0,p.stagger*(e.type==='boss'?.2:1))}this.onMeleeImpact({profile:p,origin:this.hero.position.clone(),direction:shot.dir.clone(),hits,targets})}
   step(dt){
     if(this.swing){this.swing.time-=dt;if(this.swing.time<=0)this.swing=null}
     const ready=[];this.pending=this.pending.filter(p=>{p.delay-=dt;if(p.delay<=0){ready.push(p);return false}return true});

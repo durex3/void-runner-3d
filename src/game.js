@@ -16,6 +16,12 @@ import {createSceneRuntime,createRing} from './scene-runtime.js';
 import {GameView} from './ui.js';
 import {createUpgradeChoices} from './upgrades.js';
 
+const MELEE_FEEDBACK={
+  sword_1handed:{freeze:.025,shake:.035,reaction:.68},
+  sword_2handed:{freeze:.06,shake:.3,reaction:1},
+  Skeleton_Mace:{freeze:.05,shake:.23,reaction:.92},
+};
+
 export class RelicWorkshopGame{
   constructor(app){
     this.app=app;
@@ -28,6 +34,11 @@ export class RelicWorkshopGame{
     this.hazards=[];
     this.pendingElite=null;
     this.lastDirection=new T.Vector3(0,0,1);
+    this.heroHitStop=0;
+    this.cameraKick=0;
+    this.cameraKickTime=0;
+    this.cameraKickDuration=0;
+    this.reducedMotion=globalThis.matchMedia?.('(prefers-reduced-motion: reduce)').matches??false;
     this.best=this.readBest();
   }
 
@@ -75,7 +86,7 @@ export class RelicWorkshopGame{
       scene:this.scene,hero:this.hero,state:this.state,enemies:()=>this.enemies,damage:(...args)=>this.damageEnemy(...args),garden:this.garden,
       onFire:profile=>{Actors.kickActor(this.hero,this.state.rate);this.audio.play([600,180,850,240][profile.type],.07,profile.type===1?'sawtooth':'triangle',.018)},
       effect:(object,life)=>this.effects.add(object,life,{fixed:true}),
-      onMeleeImpact:event=>this.meleeVfx.play(event),
+      onMeleeImpact:event=>{this.meleeVfx.play(event);this.applyMeleeFeedback(event)},
     });
     this.lastFrame=performance.now();
     this.uiElapsed=0;
@@ -142,6 +153,8 @@ export class RelicWorkshopGame{
     this.combat.reset();
     this.garden.reset();
     this.pendingElite=null;
+    this.heroHitStop=0;
+    this.cameraKick=this.cameraKickTime=0;
     this.input?.clear();
     const corpses=new Set(this.effects.corpses.map(corpse=>corpse.obj));
     this.clearObjects(this.enemies,corpses);
@@ -195,7 +208,8 @@ export class RelicWorkshopGame{
   damageEnemy(enemy,damage,source={}){
     if(enemy.dead||enemy.stunned)return;
     enemy.hp-=damage;
-    Actors.hitActor(enemy.obj);
+    const reaction=MELEE_FEEDBACK[source.model]?.reaction??.55;
+    Actors.hitActor(enemy.obj,reaction);
     this.effects.burst(enemy.obj.position,0xfbc47b,3);
     if(enemy.elite&&enemy.hp<=enemy.maxHp*.3){enemy.hp=Math.max(1,enemy.hp);enemy.stunned=true;this.pendingElite=enemy;return}
     if(enemy.hp>0)return;
@@ -221,6 +235,20 @@ export class RelicWorkshopGame{
   }
 
   attack(){return this.combat.attack()}
+
+  applyMeleeFeedback({profile,targets=[]}){
+    const feedback=MELEE_FEEDBACK[profile.model];
+    if(!feedback||!targets.length)return false;
+    this.heroHitStop=Math.max(this.heroHitStop,feedback.freeze);
+    for(const enemy of targets)enemy.hitStop=Math.max(enemy.hitStop||0,feedback.freeze*(enemy.type==='boss'?.55:1));
+    const shake=this.reducedMotion?0:feedback.shake*Math.min(1.35,.9+targets.length*.08);
+    this.cameraKick=Math.max(this.cameraKick,shake);
+    this.cameraKickDuration=.14+feedback.freeze;
+    this.cameraKickTime=this.cameraKickDuration;
+    this.audio.playMeleeImpact(profile.model,targets.length);
+    this.lastMeleeFeedback={model:profile.model,hits:targets.length,freeze:feedback.freeze,shake};
+    return true;
+  }
 
   hurt(amount){
     if(this.state.inv>0)return;
@@ -292,12 +320,14 @@ export class RelicWorkshopGame{
 
   updatePlayer(dt){
     this.state.time+=dt;this.state.waveTime+=dt;this.state.dash=Math.max(0,this.state.dash-dt);this.state.inv=Math.max(0,this.state.inv-dt);this.state.shot-=dt;
+    const heroFrozen=this.heroHitStop>0;
+    this.heroHitStop=Math.max(0,this.heroHitStop-dt);
     const moveSpeed=this.state.speed*(this.hero.userData.profile.moveBonus||1);
     const move=new T.Vector3(Number(this.input.isDown('d','arrowright'))-Number(this.input.isDown('a','arrowleft')),0,Number(this.input.isDown('s','arrowdown'))-Number(this.input.isDown('w','arrowup')));
     move.applyAxisAngle(new T.Vector3(0,1,0),Math.PI/4);
-    if(move.lengthSq()){move.normalize();this.lastDirection.copy(move);this.hero.position.addScaledVector(move,moveSpeed*dt);this.hero.rotation.y=Math.atan2(move.x,move.z)}
+    if(move.lengthSq()){move.normalize();this.lastDirection.copy(move);if(!heroFrozen)this.hero.position.addScaledVector(move,moveSpeed*dt);this.hero.rotation.y=Math.atan2(move.x,move.z)}
     if(this.combat.swing)this.hero.rotation.y=Math.atan2(this.combat.swing.dir.x,this.combat.swing.dir.z);
-    Actors.animateActor(this.hero,dt,this.state.time,move.lengthSq()?moveSpeed:0);
+    Actors.animateActor(this.hero,heroFrozen?0:dt,this.state.time,move.lengthSq()?moveSpeed:0);
     if(this.hero.position.length()>20)this.hero.position.setLength(20);
     this.hero.visible=this.state.inv<=0||Math.floor(this.state.inv*20)%2===0;
   }
@@ -311,6 +341,9 @@ export class RelicWorkshopGame{
   updateEnemies(dt){
     for(const enemy of this.enemies){
       if(enemy.dead||enemy.stunned)continue;
+      const hitStopped=enemy.hitStop>0;
+      enemy.hitStop=Math.max(0,(enemy.hitStop||0)-dt);
+      if(hitStopped){this.effects.updateEnemyStatus(enemy,this.state.time);Actors.animateActor(enemy.obj,0,this.state.time,0);continue}
       enemy.stagger=Math.max(0,(enemy.stagger||0)-dt);
       this.effects.updateEnemyStatus(enemy,this.state.time);
       if(enemy.stagger>0){Actors.animateActor(enemy.obj,dt*.22,this.state.time,0);continue}
@@ -381,7 +414,15 @@ export class RelicWorkshopGame{
       this.hero.position.set(4,0,2);this.hero.rotation.y=now*.0003;Actors.animateActor(this.hero,dt,now/1000,0);this.camera.position.set(30,31,37);this.camera.lookAt(0,0,0);return;
     }
     const target=this.hero.position.clone().multiplyScalar(.35);
-    this.camera.position.lerp(new T.Vector3(target.x+20,27,target.z+24),1-Math.exp(-dt*4));this.camera.lookAt(target.x,0,target.z);
+    this.camera.position.lerp(new T.Vector3(target.x+20,27,target.z+24),1-Math.exp(-dt*4));
+    this.cameraKickTime=Math.max(0,this.cameraKickTime-dt);
+    if(this.cameraKickTime>0){
+      const decay=(this.cameraKickTime/this.cameraKickDuration)**2,amount=this.cameraKick*decay;
+      this.camera.position.x+=Math.sin(now*.071)*amount;
+      this.camera.position.y+=Math.sin(now*.113)*amount*.3;
+      this.camera.position.z+=Math.cos(now*.089)*amount;
+    }
+    this.camera.lookAt(target.x,0,target.z);
   }
 
   loadNature(){loadNatureAssets(this.scene).then(()=>{document.body.dataset.nature='loaded'}).catch(()=>{document.body.dataset.nature='fallback'})}
@@ -390,9 +431,9 @@ export class RelicWorkshopGame{
     if(!new URLSearchParams(location.search).has('test'))return;
     const game=this;
     window.__game={
-      THREE:T,actors:Actors,state:this.state,hero:this.hero,garden:this.garden,combat:this.combat,effects:this.effects,meleeVfx:this.meleeVfx,
+      THREE:T,actors:Actors,state:this.state,hero:this.hero,garden:this.garden,combat:this.combat,effects:this.effects,meleeVfx:this.meleeVfx,audio:this.audio,
       get enemies(){return game.enemies},get drops(){return game.drops},get bullets(){return game.combat.bullets},get hazards(){return game.hazards},get corpses(){return game.effects.corpses},
-      selectHero:Actors.selectHero,chooseHero:name=>game.chooseHero(name),returnToTitle:()=>game.returnToTitle(),equip:slot=>game.equip(slot),attack:()=>game.attack(),tick:dt=>game.tick(dt),damageEnemy:(...args)=>game.damageEnemy(...args),hurt:amount=>game.hurt(amount),levelUp:()=>game.levelUp(),finish:win=>game.finish(win),start:()=>game.start(),spawnEnemy:(...args)=>game.spawnEnemy(...args),renderer:this.renderer,scene:this.scene,camera:this.camera,
+      selectHero:Actors.selectHero,chooseHero:name=>game.chooseHero(name),returnToTitle:()=>game.returnToTitle(),equip:slot=>game.equip(slot),attack:()=>game.attack(),tick:dt=>game.tick(dt),damageEnemy:(...args)=>game.damageEnemy(...args),hurt:amount=>game.hurt(amount),levelUp:()=>game.levelUp(),finish:win=>game.finish(win),start:()=>game.start(),spawnEnemy:(...args)=>game.spawnEnemy(...args),renderer:this.renderer,scene:this.scene,camera:this.camera,get lastMeleeFeedback(){return game.lastMeleeFeedback},
     };
   }
 }
