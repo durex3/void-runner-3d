@@ -1,7 +1,9 @@
 import * as T from 'three';
 import * as Actors from './actors.js';
 import {HEROES} from './loadouts.js';
-import {projectile,preloadProjectileAssets,setProjectileCamera} from './projectiles.js';
+import {preloadProjectileAssets,setProjectileCamera} from './projectiles.js';
+import {enemyProjectile} from './danger-vfx.js';
+import {bossShotAngles} from './boss-combat.js';
 import {WeaponCombat} from './combat.js';
 import {Garden,COMBOS,PLANTS,preloadGardenEffects} from './garden.js';
 import {createWorld,loadNatureAssets,createPickup} from './ruins.js';
@@ -83,7 +85,10 @@ export class RelicWorkshopGame{
     this.effects=new EffectsSystem({scene:this.scene,animateActor:Actors.animateActor,disposeActor:Actors.disposeActor});
     this.meleeVfx=new MeleeVfx({effects:this.effects,camera:this.camera});
     this.remoteVfx=new RemoteVfx({effects:this.effects});
-    this.garden=new Garden({scene:this.scene,hero:this.hero,state:this.state,enemies:()=>this.enemies,damage:(...args)=>this.damageEnemy(...args),toast:message=>this.view.showToast(message),burst:(...args)=>this.effects.burst(...args)});
+    this.garden=new Garden({scene:this.scene,hero:this.hero,state:this.state,enemies:()=>this.enemies,damage:(...args)=>this.damageEnemy(...args),toast:message=>this.view.showToast(message),burst:(...args)=>this.effects.burst(...args),onBossRecovery:boss=>{
+      this.hazards=this.hazards.filter(h=>{if(h.source!==boss)return true;this.scene.remove(h.obj);h.obj.userData.dispose?.();return false});
+      this.effects.updateEnemyStatus(boss,this.state.time);
+    }});
     this.combat=new WeaponCombat({
       scene:this.scene,hero:this.hero,state:this.state,enemies:()=>this.enemies,damage:(...args)=>this.damageEnemy(...args),garden:this.garden,
       onFire:(profile,context)=>{Actors.kickActor(this.hero,this.state.rate);this.meleeVfx.beginSwing(this.hero);const direction=new T.Vector3(Math.sin(this.hero.rotation.y),0,Math.cos(this.hero.rotation.y));this.remoteVfx.fire(profile,this.hero.position,direction,context);this.audio.play([600,180,850,240][profile.type],.07,profile.type===1?'sawtooth':'triangle',.018)},
@@ -326,6 +331,7 @@ export class RelicWorkshopGame{
   }
 
   updatePlayer(dt){
+    const previousPosition=this.hero.position.clone();
     this.state.time+=dt;this.state.waveTime+=dt;this.state.dash=Math.max(0,this.state.dash-dt);this.state.inv=Math.max(0,this.state.inv-dt);this.state.shot-=dt;
     const heroFrozen=this.heroHitStop>0;
     this.heroHitStop=Math.max(0,this.heroHitStop-dt);
@@ -336,6 +342,7 @@ export class RelicWorkshopGame{
     if(this.combat.swing)this.hero.rotation.y=Math.atan2(this.combat.swing.dir.x,this.combat.swing.dir.z);
     Actors.animateActor(this.hero,heroFrozen?0:dt,this.state.time,move.lengthSq()?moveSpeed:0);
     if(this.hero.position.length()>20)this.hero.position.setLength(20);
+    this.hero.userData.movementVelocity=this.hero.position.clone().sub(previousPosition).divideScalar(Math.max(dt,.0001));
     this.hero.visible=this.state.inv<=0||Math.floor(this.state.inv*20)%2===0;
   }
 
@@ -348,6 +355,12 @@ export class RelicWorkshopGame{
   updateEnemies(dt){
     for(const enemy of this.enemies){
       if(enemy.dead||enemy.stunned)continue;
+      if(enemy.type==='boss'&&(enemy.recovery>0||this.garden.effects.some(f=>f.stomp&&f.source===enemy))){
+        enemy.recovery=Math.max(0,(enemy.recovery||0)-dt);
+        this.effects.updateEnemyStatus(enemy,this.state.time);
+        Actors.animateActor(enemy.obj,dt,this.state.time,0);
+        continue;
+      }
       if(enemy.stagger>0&&enemy.rangedWindup){
         enemy.rangedWindup=null;
         enemy.attack=Math.max(enemy.attack,enemy.type==='boss'?.6:.45);
@@ -385,17 +398,25 @@ export class RelicWorkshopGame{
   }
 
   beginEnemyWindup(enemy,direction,duration){
-    enemy.rangedWindup={direction:direction.clone(),duration};
+    const pattern=enemy.type==='boss'&&(enemy.volley||0)%2?'fan':'ring';
+    const aim=direction.clone();
+    if(enemy.type==='boss'&&pattern==='fan'){
+      aim.copy(this.hero.position).addScaledVector(this.hero.userData.movementVelocity||new T.Vector3(),.7).sub(enemy.obj.position).setY(0).normalize();
+      enemy.obj.rotation.y=Math.atan2(aim.x,aim.z);
+    }
+    enemy.rangedWindup={direction:aim,duration,pattern};
   }
 
   fireEnemyProjectiles(enemy,direction){
     enemy.attack=enemy.type==='boss'?2:3;
-    const count=enemy.type==='boss'?10:1;
-    for(let index=0;index<count;index++){
-      const shotDirection=count===1?direction.clone():new T.Vector3(Math.sin(index/count*Math.PI*2),0,Math.cos(index/count*Math.PI*2));
-      const velocity=shotDirection.multiplyScalar(5),object=projectile(enemy.obj.position.clone().setY(.7),velocity,0,true);
-      this.scene.add(object);Actors.kickActor(enemy.obj);this.hazards.push({obj:object,v:velocity,life:6});
+    const boss=enemy.type==='boss',pattern=enemy.rangedWindup?.pattern||'ring';
+    const angles=boss?bossShotAngles(pattern):[0];
+    for(const angle of angles){
+      const shotDirection=boss&&pattern==='ring'?new T.Vector3(Math.sin(angle),0,Math.cos(angle)):direction.clone().applyAxisAngle(new T.Vector3(0,1,0),angle);
+      const velocity=shotDirection.multiplyScalar(boss&&pattern==='fan'?7.5:5),object=enemyProjectile(enemy.obj.position.clone().setY(.7),velocity);
+      this.scene.add(object);Actors.kickActor(enemy.obj);this.hazards.push({obj:object,v:velocity,life:6,source:enemy});
     }
+    if(boss)enemy.volley=(enemy.volley||0)+1;
   }
 
   updateHazards(dt){

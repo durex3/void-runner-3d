@@ -24,7 +24,14 @@ body{background:#1b2d35;color:#d3dfd6;font-family:'Microsoft YaHei',system-ui,sa
 
 /* Keep mobile battle panels in flow below the measured HUD. */
 #battle-status{display:contents}
+#battle-notice{position:fixed;top:148px;left:35%;width:30%;z-index:3;pointer-events:none}
+#battle-notice #toast,#danger-notice{position:static;width:auto;margin:0;padding:5px 8px;border-left:3px solid #b99c68;background:#15282ee8;color:#e4cfab;font:600 12px/1.4 system-ui;letter-spacing:0;text-shadow:none;text-align:left;overflow-wrap:anywhere}
+#battle-notice #toast:empty,#danger-notice:empty,#battle-notice.danger-active #toast{display:none}
+#battle-notice #danger-notice{border-color:#ff5265;color:#ffe1de;background:#301c25eb}
+#battle-notice.recovery-active #danger-notice{border-color:#99dfc4;color:#d5fff0;background:#18362deb}
 @media(max-width:700px){
+  #battle-status #battle-notice{position:static;width:100%}
+  #battle-status #battle-notice:not(.danger-active):has(#toast:empty){display:none}
   #battle-status{position:fixed;display:flex;flex-direction:column;align-items:flex-start;gap:8px;top:calc(var(--hud-bottom,108px) + 8px);left:max(10px,env(safe-area-inset-left));right:max(10px,env(safe-area-inset-right));z-index:3;pointer-events:none}
   #battle-status #bossbar{position:static;width:100%;padding:6px 8px;font-size:11px;letter-spacing:0}
   #battle-status #garden-hud{position:static;max-width:100%;pointer-events:auto;max-height:calc(100dvh - var(--hud-bottom,108px) - 160px);overflow-y:auto}

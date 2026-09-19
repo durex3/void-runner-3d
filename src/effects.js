@@ -1,4 +1,5 @@
 import * as T from 'three';
+import {bossShotAngles} from './boss-combat.js';
 
 export class EffectsSystem{
   constructor({scene,animateActor,disposeActor}){
@@ -55,16 +56,24 @@ export class EffectsSystem{
       spoke.add(line,tip);charge.add(spoke);
     }
     charge.visible=false;group.add(charge);
-    enemy.statusVfx={group,slow,stagger,charge,chargeRing:ring};
+    const recovery=new T.Mesh(this.statusGeometry.slow,this.materials.stagger);
+    recovery.rotation.x=-Math.PI/2;recovery.position.y=.14;recovery.scale.setScalar(enemy.size+.35);recovery.renderOrder=6;recovery.visible=false;group.add(recovery);
+    enemy.statusVfx={group,slow,stagger,charge,chargeRing:ring,recovery};
   }
 
   updateEnemyStatus(enemy,time){
     const status=enemy.statusVfx;if(!status)return;
+    status.recovery.visible=enemy.recovery>0&&!enemy.dead;
     status.charge.visible=!!enemy.rangedWindup&&!enemy.dead&&!enemy.stunned;
     if(status.charge.visible){
       const progress=1-Math.max(0,enemy.attack)/enemy.rangedWindup.duration;
       status.chargeRing.scale.setScalar(1.3-.3*progress);
-      status.charge.rotation.y=enemy.type==='boss'?-enemy.obj.rotation.y:0;
+      const fan=enemy.rangedWindup.pattern==='fan';
+      status.charge.rotation.y=enemy.type==='boss'&&!fan?-enemy.obj.rotation.y:0;
+      if(enemy.type==='boss'){
+        const angles=bossShotAngles(enemy.rangedWindup.pattern);
+        status.charge.children.slice(1).forEach((spoke,i)=>{spoke.visible=i<angles.length;if(spoke.visible)spoke.rotation.y=angles[i];});
+      }
     }
     status.slow.visible=enemy.slow>0;
     status.stagger.visible=enemy.stagger>0;

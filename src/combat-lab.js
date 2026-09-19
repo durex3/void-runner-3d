@@ -78,7 +78,7 @@ export function installCombatLab(game){
     const before=game.hazards.length;original.fireEnemyProjectiles(enemy,direction);
     if(active)record('projectile-fired',{enemy:enemy.type,count:game.hazards.length-before,origin:enemy.obj.position.toArray(),direction:direction.toArray()});
   };
-  game.beginEnemyWindup=(enemy,direction,duration)=>{original.beginEnemyWindup(enemy,direction,duration);if(active)record('projectile-warning',{enemy:enemy.type,duration,direction:direction.toArray()});};
+  game.beginEnemyWindup=(enemy,direction,duration)=>{original.beginEnemyWindup(enemy,direction,duration);if(active)record('projectile-warning',{enemy:enemy.type,duration,pattern:enemy.rangedWindup.pattern,direction:enemy.rangedWindup.direction.toArray()});};
   game.hurt=amount=>{
     const before=game.state.hp;original.hurt(amount);
     if(active&&game.state.hp<before)record('damage',{amount:before-game.state.hp,requested:amount,position:game.hero.position.toArray()});

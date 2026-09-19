@@ -12,7 +12,10 @@ export class GameView{
   mount(){
     this.app.innerHTML=SHELL;
     const status=document.createElement('div');status.id='battle-status';
-    this.app.append(status);status.append(this.$('#bossbar'),this.$('#garden-hud'));
+    const notice=document.createElement('div');notice.id='battle-notice';
+    const danger=document.createElement('div');danger.id='danger-notice';danger.setAttribute('role','status');
+    notice.append(danger,this.$('#toast'));
+    this.app.append(status);status.append(this.$('#bossbar'),notice,this.$('#garden-hud'));
     const hud=this.$('#hud');
     this.hudObserver=new ResizeObserver(()=>this.app.style.setProperty('--hud-bottom',`${hud.getBoundingClientRect().bottom}px`));
     this.hudObserver.observe(hud);
@@ -165,6 +168,13 @@ export class GameView{
   }
 
   renderHud(state,garden,enemies,stats,devices){
+    const warning=garden.effects.some(effect=>effect.stomp);
+    const recovering=enemies.some(enemy=>enemy.type==='boss'&&!enemy.dead&&enemy.recovery>0);
+    const message=warning?'巨像践踏 · 危险区域':recovering?'巨像恢复中 · 反击时机':'';
+    const danger=this.$('#danger-notice');
+    if(danger.textContent!==message)danger.textContent=message;
+    this.$('#battle-notice').classList.toggle('danger-active',warning||recovering);
+    this.$('#battle-notice').classList.toggle('recovery-active',recovering&&!warning);
     this.renderDevices(devices);
     this.$('#health').style.width=`${state.hp/state.maxHp*100}%`;
     this.$('#healthtext').textContent=`${Math.ceil(state.hp)} / ${state.maxHp}`;
