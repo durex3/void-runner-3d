@@ -7,7 +7,10 @@ export class EffectsSystem{
     this.disposeActor=disposeActor;
     this.effects=[];
     this.corpses=[];
-    this.geometry=new T.IcosahedronGeometry(1,0);
+    this.ready=new T.TextureLoader().loadAsync('/assets/effects/kenney/circle_02.png').then(map=>{
+      map.colorSpace=T.SRGBColorSpace;
+      for(const key of ['glow','hurt','shock'])this.materials[key]=new T.SpriteMaterial({map,color:this.materials[key].color,transparent:true,opacity:.65,depthWrite:false,toneMapped:false});
+    });
     this.statusGeometry={
       slow:new T.RingGeometry(.82,1,48),
       stagger:new T.OctahedronGeometry(.18,0),
@@ -64,9 +67,10 @@ export class EffectsSystem{
   burst(position,color=0xfbc47b,count=8){
     for(let index=0;index<count&&this.effects.length<180;index++){
       const material=color===0xfbc47b?this.materials.glow:color===0x9ff7ee?this.materials.shock:this.materials.hurt;
-      const object=new T.Mesh(this.geometry,material);
+      if(!material.isSpriteMaterial)continue;
+      const object=new T.Sprite(material);
       object.position.set(position.x,.7,position.z);
-      object.scale.setScalar(.07);
+      object.scale.setScalar(.18);
       object.castShadow=object.receiveShadow=true;
       this.add(object,.4+Math.random()*.3,{velocity:new T.Vector3((Math.random()-.5)*6,Math.random()*5,(Math.random()-.5)*6)});
     }

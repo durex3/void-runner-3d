@@ -4,7 +4,7 @@ import {projectile,beam} from './projectiles.js';
 // Combat simulation is independent of input/render timing. No wall-clock timers.
 export class WeaponCombat{
   constructor({scene,hero,state,enemies,damage,garden,onFire=()=>{},effect=()=>{},onMeleeImpact=()=>{},onHit=()=>{}}){Object.assign(this,{scene,hero,state,enemies,damage,garden,onFire,effect,onMeleeImpact,onHit});this.bullets=[];this.pending=[]}
-  reset(){for(const b of this.bullets)this.scene.remove(b.obj);this.bullets.length=0;this.pending.length=0;this.swing=null;for(const e of this.enemies())delete e.push}
+  reset(){for(const b of this.bullets){this.scene.remove(b.obj);b.obj.userData.dispose?.();}this.bullets.length=0;this.pending.length=0;this.swing=null;for(const e of this.enemies())delete e.push}
   cancelBurst(){this.pending=this.pending.filter(p=>!['burst','melee'].includes(p.kind));this.swing=null}
   targets(){return this.enemies().filter(e=>!e.dead&&!e.stunned)}
   attack(){
@@ -17,7 +17,7 @@ export class WeaponCombat{
     if(profile.effect==='melee'){
       this.onFire(profile);this.swing={dir:dir.clone(),time:profile.interval/this.state.rate};this.pending.push({kind:'melee',delay:profile.delay/this.state.rate,shot});
     }else if(profile.effect==='nature'){
-      this.onFire(profile);const center=target.obj.position.clone();this.garden.pulse(center,0,profile.radius,profile.delay);
+      const center=target.obj.position.clone();this.onFire(profile,{target:center.clone()});this.garden.pulse(center,0,profile.radius,profile.delay);
       this.pending.push({kind:'impact',delay:profile.delay,center,shot});
     }else if(profile.effect==='chain'){
       this.onFire(profile);const visited=new Set();let next=target,from=this.hero.position.clone().setY(1.2),amount=shot.damage;
@@ -47,6 +47,7 @@ export class WeaponCombat{
     const ready=[];this.pending=this.pending.filter(p=>{p.delay-=dt;if(p.delay<=0){ready.push(p);return false}return true});
     for(const p of ready){if(p.kind==='impact')this.impact(p);else if(p.kind==='melee')this.melee(p.shot);else this.emit(p.shot)}
     for(const b of this.bullets){
+      b.obj.userData.update?.(dt);
       const travel=Math.min(dt,Math.max(0,b.life));b.life-=dt;const prev=b.obj.position.clone();b.obj.position.addScaledVector(b.v,travel);
       const segment=b.obj.position.clone().sub(prev),length=segment.length(),lengthSq=segment.lengthSq(),candidates=[];
       if(!lengthSq)continue;
@@ -69,7 +70,7 @@ export class WeaponCombat{
       }
       b.distance+=length;
     }
-    this.bullets=this.bullets.filter(b=>{if(b.life<=0){this.scene.remove(b.obj);return false}return true});
+    this.bullets=this.bullets.filter(b=>{if(b.life<=0){this.scene.remove(b.obj);b.obj.userData.dispose?.();return false}return true});
     for(const e of this.targets())if(e.push){e.obj.position.addScaledVector(e.push,(1-Math.exp(-12*dt))/12);e.push.multiplyScalar(Math.exp(-12*dt));if(e.obj.position.length()>20)e.obj.position.setLength(20);if(e.push.lengthSq()<.01)delete e.push}
   }
 }

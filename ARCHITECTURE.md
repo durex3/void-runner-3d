@@ -13,7 +13,9 @@
 | `ui.js` | DOM 模板、HUD 和弹窗渲染；通过回调向游戏层报告用户操作 |
 | `input-controller.js` | 键盘、触屏及失焦输入，向游戏层发送意图 |
 | `effects.js` | 粒子、临时效果和尸体生命周期 |
-| `melee-vfx.js` | 骑士近战贴图、攻击方向投影、视觉样式和淡出动画，不参与伤害结算 |
+| `melee-vfx.js` | 骑士近战反馈、重剑世界空间剑刃采样、面向镜头的剑尖亮边与淡出，不参与伤害结算 |
+| `remote-vfx.js` | 远程发射和命中反馈、自然种子/叶簇传递及根须展开，只消费战斗事件 |
+| `projectiles.js` | 箭矢模型、序列帧弹体、面向相机的拖尾和闪电连接，提供 update/dispose 生命周期钩子 |
 | `audio.js` | Web Audio 播放、静音状态及武器差异化合成音色 |
 | `scene-runtime.js` | Three.js 场景、相机、渲染器和基础灯光 |
 | `game-state.js` | 局内状态的创建与重置规则 |
@@ -34,7 +36,13 @@
 
 ## 验证
 
+2026-09-20 特效生命周期：启动时等待近战、远程、弹体、通用粒子和装置贴图预加载。`combat.js` 推进弹体视觉更新，在到期和重置时调用 `dispose`；敌方弹体由 `game.js` 同样回收。共享模型/贴图不随单发销毁，克隆材质和独立几何体随对象清理。
+
+重剑在开火时注册跟随骨骼动画的轨迹，主要挥砍窗口为动作进度 0.40–0.59，命中对齐进度 0.52，历史采样保留约 75 毫秒。原拖尾保留深度关系，仅窄剑尖亮边关闭深度测试以保证斜向可见；切换武器同时隐藏两层并回收。自然法术传递仅为表现，不新增追踪弹体或修改锁定落点。
+
 - `npm test`：架构规则、战斗与装置单测，以及完整浏览器流程。
+- `node tests/heavy-sword-visual.mjs` / `node tests/ranger-nature-visual.mjs`：真实渲染像素、桌面/手机可见性、时序与回收。
+- `node tests/assets-visual.mjs` / `node tests/beam-directions.mjs`：资源接入与闪电方向回归。
 - `npm run test:weapons`：角色武器、切换、暂停、重开、骑士动作、命中反馈及桌面/移动端特效。
 - `node tests/kaykit.mjs`：角色模型、骨骼、动画与资源清理。
 - `npm run build`：生产构建。

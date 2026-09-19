@@ -11,7 +11,8 @@ export const COMBOS=[
  {id:'pollen',name:'战术空投',symbol:'➶',desc:'每次冲刺沿途部署两件当前武器对应的装置。'},
  {id:'friendship',name:'协同协议',symbol:'∞',desc:'伙伴附近装置伤害 +50%；采集构装体拾取范围翻倍，治愈构装体治疗量翻倍。'},
 ];
-const discGeo=new T.RingGeometry(.88,1,32);const effectMats=[0x97db71,0xffbb5f,0xc5a5ff,0xff7757].map(color=>new T.MeshBasicMaterial({color,transparent:true,opacity:.65,side:T.DoubleSide,depthWrite:false}));
+const discGeo=new T.PlaneGeometry(2,2);const effectMats=[0x97db71,0xffbb5f,0xc5a5ff,0xff7757].map(color=>new T.MeshBasicMaterial({color,transparent:true,opacity:.65,side:T.DoubleSide,depthWrite:false}));
+export async function preloadGardenEffects(){const map=await new T.TextureLoader().loadAsync('/assets/effects/kenney/circle_02.png');map.colorSpace=T.SRGBColorSpace;for(const m of effectMats){m.map=map;m.needsUpdate=true;}}
 export class Garden{
  constructor({scene,hero,state,enemies,damage,toast,burst,visualFactory=createRelic,random=Math.random}){Object.assign(this,{scene,hero,state,enemies,damage,toast,burst,visualFactory,random});this.plants=[];this.seeds=[];this.buddies=[];this.effects=[];this.combos=new Set();this.stats={planted:0,kills:0,combos:0,destroyed:0};this.stompTimer=7}
  reset(){for(const list of [this.plants,this.seeds,this.buddies,this.effects]){for(const x of list)this.scene.remove(x.obj);list.length=0}this.combos.clear();this.stats={planted:0,kills:0,combos:0,destroyed:0};this.stompTimer=7}

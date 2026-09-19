@@ -13,9 +13,11 @@ try{
   await page.click('[data-character="Knight"]');
   await page.click('#start');
   const textureState=await page.evaluate(()=>Object.fromEntries(Object.entries(__game.meleeVfx.textures).map(([key,texture])=>[key,{width:texture.image?.naturalWidth||texture.image?.width,height:texture.image?.naturalHeight||texture.image?.height}])));
-  assert.equal(Object.keys(textureState).length,11);
-  assert.ok(Object.entries(textureState).filter(([key])=>!key.startsWith('combat')).every(([,texture])=>texture.width===512&&texture.height===512));
+  assert.equal(Object.keys(textureState).length,13);
+  assert.ok(Object.entries(textureState).filter(([key])=>!key.startsWith('combat')&&!key.startsWith('warrior')).every(([,texture])=>texture.width===512&&texture.height===512));
   assert.ok(textureState.combatAtlas.width===640&&textureState.combatAtlas.height===1856);
+  assert.ok(textureState.warriorOne.width===256&&textureState.warriorOne.height===640);
+  assert.ok(textureState.warriorTwo.width===256&&textureState.warriorTwo.height===640);
   assert.ok(Object.entries(textureState).filter(([key])=>key.startsWith('combat')&&key!=='combatAtlas').every(([,texture])=>texture.width===64&&texture.height===64));
 
   const captures=[];
@@ -37,7 +39,7 @@ try{
       return {slot,before,kinds:visual.map(effect=>effect.obj.userData.meleeVfx),slashColor:slash?.obj.material.color.getHex(),opacity,damage:10000-enemy.hp,projected};
     },slot);
     assert.equal(state.before,0);
-    assert.ok(state.kinds.includes('slash')&&state.kinds.includes('impact'));
+    assert.ok((slot===1||state.kinds.includes('slash'))&&state.kinds.includes('impact'));
     assert.equal(state.kinds.includes('dust'),slot>0);
     assert.equal(state.kinds.includes('landing'),slot>0);
     assert.equal(state.kinds.includes('shock-core'),slot===2);
@@ -45,11 +47,11 @@ try{
     assert.ok(state.damage>0);
     assert.ok(state.projected.every(([x,y])=>Math.abs(x)<1&&Math.abs(y)<1));
     await page.screenshot({path:`test-results/knight-vfx/slot-${slot+1}.png`});
-    state.opacityAfter=await page.evaluate(()=>{const g=__game,visual=g.effects.effects.find(effect=>effect.obj.userData.meleeVfx);g.effects.update(.08,0,'playing');g.renderer.render(g.scene,g.camera);return visual?.obj.material.opacity});
+    state.opacityAfter=await page.evaluate(()=>{const g=__game,visual=g.effects.effects.find(effect=>effect.obj.userData.meleeVfx);g.effects.update(visual.maxLife*.85,0,'playing');g.renderer.render(g.scene,g.camera);return visual?.obj.material.opacity});
     assert.ok(state.opacityAfter<state.opacity);
     captures.push(state);
   }
-  assert.equal(new Set(captures.map(capture=>capture.slashColor)).size,3);
+  assert.notEqual(captures[0].slashColor,captures[2].slashColor);
   const maceColor=captures[2].slashColor;
   assert.ok((maceColor&255)>((maceColor>>16)&255));
 

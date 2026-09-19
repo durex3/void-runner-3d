@@ -1,9 +1,9 @@
 import * as T from 'three';
 import * as Actors from './actors.js';
 import {HEROES} from './loadouts.js';
-import {projectile} from './projectiles.js';
+import {projectile,preloadProjectileAssets,setProjectileCamera} from './projectiles.js';
 import {WeaponCombat} from './combat.js';
-import {Garden,COMBOS,PLANTS} from './garden.js';
+import {Garden,COMBOS,PLANTS,preloadGardenEffects} from './garden.js';
 import {createWorld,loadNatureAssets,createPickup} from './ruins.js';
 import {AudioService} from './audio.js';
 import {buildCharacterStats} from './character-stats.js';
@@ -48,7 +48,7 @@ export class RelicWorkshopGame{
     document.body.dataset.actors='loaded';
     this.view.setBest(this.best);
     this.setupRuntime();
-    await Promise.all([this.meleeVfx.ready,this.remoteVfx.ready]);
+    await Promise.all([this.meleeVfx.ready,this.remoteVfx.ready,preloadProjectileAssets(),this.effects.ready,preloadGardenEffects()]);
     document.body.dataset.effects='loaded';
     this.bindControls();
     this.equip();
@@ -76,7 +76,7 @@ export class RelicWorkshopGame{
     const runtime=createSceneRuntime(this.app);
     this.scene=runtime.scene;
     this.renderer=runtime.renderer;
-    this.camera=runtime.camera;
+    this.camera=runtime.camera;setProjectileCamera(this.camera);
     this.world=createWorld(this.scene);
     this.hero=Actors.createHero(this.scene).hero;
     this.hero.add(createRing(.8,.05,0xffffff));
@@ -86,10 +86,10 @@ export class RelicWorkshopGame{
     this.garden=new Garden({scene:this.scene,hero:this.hero,state:this.state,enemies:()=>this.enemies,damage:(...args)=>this.damageEnemy(...args),toast:message=>this.view.showToast(message),burst:(...args)=>this.effects.burst(...args)});
     this.combat=new WeaponCombat({
       scene:this.scene,hero:this.hero,state:this.state,enemies:()=>this.enemies,damage:(...args)=>this.damageEnemy(...args),garden:this.garden,
-      onFire:profile=>{Actors.kickActor(this.hero,this.state.rate);const direction=new T.Vector3(Math.sin(this.hero.rotation.y),0,Math.cos(this.hero.rotation.y));this.remoteVfx.fire(profile,this.hero.position,direction);this.audio.play([600,180,850,240][profile.type],.07,profile.type===1?'sawtooth':'triangle',.018)},
-      effect:(object,life)=>this.effects.add(object,life,{fixed:true}),
+      onFire:(profile,context)=>{Actors.kickActor(this.hero,this.state.rate);this.meleeVfx.beginSwing(this.hero);const direction=new T.Vector3(Math.sin(this.hero.rotation.y),0,Math.cos(this.hero.rotation.y));this.remoteVfx.fire(profile,this.hero.position,direction,context);this.audio.play([600,180,850,240][profile.type],.07,profile.type===1?'sawtooth':'triangle',.018)},
+      effect:(object,life)=>this.effects.add(object,life,{fixed:true,cleanup:o=>o.userData.dispose?.()}),
       onHit:event=>this.remoteVfx.hit(event.profile,event.position,event.kind),
-      onMeleeImpact:event=>{this.meleeVfx.play(event);this.applyMeleeFeedback(event)},
+      onMeleeImpact:event=>{this.meleeVfx.play({...event,actor:this.hero});this.applyMeleeFeedback(event)},
     });
     this.lastFrame=performance.now();
     this.uiElapsed=0;
@@ -170,6 +170,7 @@ export class RelicWorkshopGame{
     for(const item of list){
       if(skip.has(item.obj))continue;
       if(item.obj.userData.rig)Actors.disposeActor(item.obj);else this.scene.remove(item.obj);
+      item.obj.userData.dispose?.();
       if(item.dispose){item.obj.geometry?.dispose();item.obj.material?.dispose()}
     }
     list.length=0;
@@ -377,7 +378,7 @@ export class RelicWorkshopGame{
   updateHazards(dt){
     const heroCenter=this.hero.position.clone().setY(.7);
     for(const hazard of this.hazards){hazard.life-=dt;hazard.obj.position.addScaledVector(hazard.v,dt);if(hazard.obj.position.distanceTo(heroCenter)<.65){this.hurt(12);hazard.life=0}}
-    this.hazards=this.hazards.filter(hazard=>{if(hazard.life>0)return true;this.scene.remove(hazard.obj);return false});
+    this.hazards=this.hazards.filter(hazard=>{if(hazard.life>0)return true;this.scene.remove(hazard.obj);hazard.obj.userData.dispose?.();return false});
   }
 
   updateDrops(dt){

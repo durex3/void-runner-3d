@@ -1,6 +1,6 @@
 # 美术来源与许可
 
-核对日期：2026-09-18。当前采用 KayKit 角色与道具、Kenney 树岩及项目程序化美术。仅复制所需素材，未修改用户原始资源。
+核对日期：2026-09-20。当前采用 KayKit 角色与道具、Kenney 树岩、外部特效贴图及项目程序化美术。用户原始资源保持不变，运行副本位于 `public/assets/`。
 
 ## KayKit
 
@@ -29,7 +29,15 @@
 - [Combat FX 1.1](https://ragnapixel.itch.io/combat-fx)：用户购买的 RagnaPixel 资源包，按随包 `public-license.txt` 使用。当前接入 `combat-sheet.png` 的逐帧 Sprite Sheet，并保留四张透明首帧，用于骑士命中强化和远程武器差异化反馈；原始 ZIP 保留在 `references/purchased/Combat FX 1.1/`，未修改。
 - 遗迹柱廊、地砖、构装伙伴、经验晶体、符文底盘及其余基础效果由程序化几何体创建；Canvas 纹理、SVG 图标、CSS 界面和 Web Audio 合成音效由项目生成。骑士三把武器的差异化命中音色不使用外部音频文件。
 
-下一阶段的工程师、游侠和德鲁伊远程反馈优先复用现有模型、Kenney Particle Pack 贴图与程序化几何体；若后续引入新的外部贴图、音频或动作文件，必须先补充本文件及对应许可副本，不能仅在代码中记录路径。
+### 补充弹体与法术资源
+
+- KayKit Adventurers 箭矢：`public/assets/effects/projectiles/` 包含 `arrow_bow`、`arrow_crossbow` 的 glTF/bin 及 ranger/rogue 配套贴图；沿用上方 Adventurers CC0 许可。
+- [StarsteelGaming Spell Effects](https://opengameart.org/content/spell-effects-by-starsteelgaming)：来源页面标注 CC0。运行目录 `public/assets/effects/purchased/spells/` 中 Fireball、Thundersphere 序列及对应小写首帧、Icespear 来自该包；当前工程师弹体使用 Fireball 与 Thundersphere 序列，Icespear 不替代长弓。
+- [CraftPix 10 Magic Sprite Sheet Effects](https://free-game-assets.itch.io/pixel-art-magic-sprite-sheet-effects)：`lightning.png`、`explosion.png`、`spikes.png` 和 `nature/unholy-ground.png` 为运行副本。原包 `references/purchased/10-magic-sprite-sheet-effects-pixel-art/License.txt` 指向 CraftPix 文件许可，不能标成 CC0。Unholy/Spikes 当前保留加载引用，不用于自然法杖主要表现。
+- [Frostwindz Warrior FREE](https://frostwindz.itch.io/pixel-art-skill-animations-warrior)：`public/assets/effects/purchased/warrior/warrior-1.png`、`warrior-2.png`；随包协议保留在 `references/purchased/Pixel Art Animations - Warrior (FREE)/`。当前仍被加载，但重剑不使用该序列绘制；其许可独立于 Combat FX 与 Kenney。
+- 重剑世界空间拖尾和镜头朝向亮边、命中碎片、自然种子核心与根须由项目代码生成，不是新购买的贴图或模型。
+
+上述来源记录不替代原始许可。公开发行前应复核各包的再分发要求及许可副本；未来新增外部贴图、音频或动作时同步更新本文件。
 
 ## 保留但不用于当前场景的内容
 
@@ -38,3 +46,8 @@
 - 未接入 Synty、Quaternius 或 KayKit Dungeon Remastered。库存模型不等于当前已开放玩法，见 [武器素材清单](./武器素材清单.md)。
 
 Vite 会把 `public/` 中保留的历史资产一并复制到构建目录；“当前不加载”不代表已从发行文件中剔除。
+
+### 自然法杖与游侠效果补充
+
+- Kenney Nature Kit 2.1（CC0）：`Side/grass_leafs.png` 接入为 `public/assets/effects/kenney/nature-leaves.png`，用于自然法术叶簇；原授权见 `references/nature-kit/License.txt`。
+- Kenney Particle Pack（CC0）：`magic_01.png` 用于自然符文，`trace_01.png` 用于游侠拖尾。UV 取景与动态缩放由运行时代码完成，原素材不改写。
