@@ -11,6 +11,11 @@ export class GameView{
 
   mount(){
     this.app.innerHTML=SHELL;
+    const status=document.createElement('div');status.id='battle-status';
+    this.app.append(status);status.append(this.$('#bossbar'),this.$('#garden-hud'));
+    const hud=this.$('#hud');
+    this.hudObserver=new ResizeObserver(()=>this.app.style.setProperty('--hud-bottom',`${hud.getBoundingClientRect().bottom}px`));
+    this.hudObserver.observe(hud);
     this.elements={
       start:this.$('#start'),modal:this.$('#modal'),overlay:this.$('#overlay'),
       toast:this.$('#toast'),weapons:this.$('#weapons'),roleDescription:this.$('#role-description'),

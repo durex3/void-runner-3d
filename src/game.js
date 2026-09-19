@@ -52,7 +52,7 @@ export class RelicWorkshopGame{
     document.body.dataset.effects='loaded';
     this.bindControls();
     this.equip();
-    this.exposeTestApi();
+    await this.exposeTestApi();
     this.loadNature();
     requestAnimationFrame(time=>this.frame(time));
     return this;
@@ -215,9 +215,12 @@ export class RelicWorkshopGame{
     const reaction=MELEE_FEEDBACK[source.model]?.reaction??.55;
     Actors.hitActor(enemy.obj,reaction);
     this.effects.burst(enemy.obj.position,0xfbc47b,3);
-    if(enemy.elite&&enemy.hp<=enemy.maxHp*.3){enemy.hp=Math.max(1,enemy.hp);enemy.stunned=true;this.pendingElite=enemy;return}
+    if(enemy.elite&&enemy.hp<=enemy.maxHp*.3){enemy.hp=Math.max(1,enemy.hp);enemy.stunned=true;enemy.rangedWindup=null;this.effects.updateEnemyStatus(enemy,this.state.time);this.pendingElite=enemy;return}
     if(enemy.hp>0)return;
     enemy.dead=true;
+    enemy.rangedWindup=null;
+    this.effects.updateEnemyStatus(enemy,this.state.time);
+    this.garden.cancelStomps(enemy);
     this.state.kills++;
     this.garden.onKill(enemy.obj.position,source);
     this.audio.play(140,.07,'triangle',.012);
@@ -345,6 +348,10 @@ export class RelicWorkshopGame{
   updateEnemies(dt){
     for(const enemy of this.enemies){
       if(enemy.dead||enemy.stunned)continue;
+      if(enemy.stagger>0&&enemy.rangedWindup){
+        enemy.rangedWindup=null;
+        enemy.attack=Math.max(enemy.attack,enemy.type==='boss'?.6:.45);
+      }
       const hitStopped=enemy.hitStop>0;
       enemy.hitStop=Math.max(0,(enemy.hitStop||0)-dt);
       if(hitStopped){this.effects.updateEnemyStatus(enemy,this.state.time);Actors.animateActor(enemy.obj,0,this.state.time,0);continue}
@@ -355,14 +362,30 @@ export class RelicWorkshopGame{
       this.effects.updateEnemyStatus(enemy,this.state.time);
       const delta=this.hero.position.clone().sub(enemy.obj.position),distance=delta.length();delta.normalize();
       const speed=enemy.speed*(enemy.slow>0?.55:1);
-      if(enemy.type!=='spitter'||distance>8)enemy.obj.position.addScaledVector(delta,speed*dt);
-      enemy.obj.rotation.y=Math.atan2(delta.x,delta.z);
-      Actors.animateActor(enemy.obj,dt,this.state.time,(enemy.type!=='spitter'||distance>8)?speed:0);
+      if(!enemy.rangedWindup&&(enemy.type!=='spitter'||distance>8))enemy.obj.position.addScaledVector(delta,speed*dt);
+      const facing=enemy.rangedWindup?.direction||delta;
+      enemy.obj.rotation.y=Math.atan2(facing.x,facing.z);
+      Actors.animateActor(enemy.obj,dt,this.state.time,!enemy.rangedWindup&&(enemy.type!=='spitter'||distance>8)?speed:0);
       enemy.attack-=dt;enemy.melee=(enemy.melee||0)-dt;
       if(distance<enemy.size+.45){this.hurt(enemy.type==='boss'?22:9);if(enemy.melee<=0){Actors.kickActor(enemy.obj);enemy.melee=.8}}
-      if((enemy.type==='spitter'||enemy.type==='boss')&&enemy.attack<=0)this.fireEnemyProjectiles(enemy,delta);
+      if(enemy.type==='spitter'||enemy.type==='boss'){
+        const duration=enemy.type==='boss'?.6:.45;
+        if(!enemy.rangedWindup&&enemy.attack<=duration){
+          enemy.attack=Math.max(enemy.attack,duration);
+          this.beginEnemyWindup(enemy,delta,duration);
+        }
+        if(enemy.rangedWindup&&enemy.attack<=0){
+          this.fireEnemyProjectiles(enemy,enemy.rangedWindup.direction);
+          enemy.rangedWindup=null;
+        }
+        this.effects.updateEnemyStatus(enemy,this.state.time);
+      }
     }
     this.enemies=this.enemies.filter(enemy=>!enemy.dead);
+  }
+
+  beginEnemyWindup(enemy,direction,duration){
+    enemy.rangedWindup={direction:direction.clone(),duration};
   }
 
   fireEnemyProjectiles(enemy,direction){
@@ -401,6 +424,7 @@ export class RelicWorkshopGame{
 
   frame(now){
     requestAnimationFrame(time=>this.frame(time));
+    if(this.testLab?.manual){this.lastFrame=now;return;}
     const dt=Math.min(.04,(now-this.lastFrame)/1000);this.lastFrame=now;
     if(this.state.mode==='playing')this.tick(dt);
     if(this.state.mode==='lost')Actors.animateActor(this.hero,dt,now/1000,0);
@@ -431,7 +455,7 @@ export class RelicWorkshopGame{
 
   loadNature(){loadNatureAssets(this.scene).then(()=>{document.body.dataset.nature='loaded'}).catch(()=>{document.body.dataset.nature='fallback'})}
 
-  exposeTestApi(){
+  async exposeTestApi(){
     if(!new URLSearchParams(location.search).has('test'))return;
     const game=this;
     window.__game={
@@ -439,5 +463,10 @@ export class RelicWorkshopGame{
       get enemies(){return game.enemies},get drops(){return game.drops},get bullets(){return game.combat.bullets},get hazards(){return game.hazards},get corpses(){return game.effects.corpses},
       selectHero:Actors.selectHero,chooseHero:name=>game.chooseHero(name),returnToTitle:()=>game.returnToTitle(),equip:slot=>game.equip(slot),attack:()=>game.attack(),tick:dt=>game.tick(dt),damageEnemy:(...args)=>game.damageEnemy(...args),hurt:amount=>game.hurt(amount),levelUp:()=>game.levelUp(),finish:win=>game.finish(win),start:()=>game.start(),spawnEnemy:(...args)=>game.spawnEnemy(...args),renderer:this.renderer,scene:this.scene,camera:this.camera,get lastMeleeFeedback(){return game.lastMeleeFeedback},
     };
+    if(new URLSearchParams(location.search).has('scenario')){
+      const {installCombatLab}=await import('./combat-lab.js');
+      this.testLab=installCombatLab(this);
+      window.__game.lab=this.testLab;
+    }
   }
 }

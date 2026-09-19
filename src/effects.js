@@ -14,6 +14,9 @@ export class EffectsSystem{
     this.statusGeometry={
       slow:new T.RingGeometry(.82,1,48),
       stagger:new T.OctahedronGeometry(.18,0),
+      chargeRing:new T.RingGeometry(.78,.88,40),
+      chargeLine:new T.BoxGeometry(.09,.035,1.4),
+      chargeArrow:new T.ConeGeometry(.16,.42,3),
     };
     this.materials={
       glow:new T.MeshBasicMaterial({color:0xfbc47b}),
@@ -21,6 +24,8 @@ export class EffectsSystem{
       slow:new T.MeshBasicMaterial({color:0x78d9e7,transparent:true,opacity:.72,side:T.DoubleSide,depthWrite:false,toneMapped:false}),
       stagger:new T.MeshBasicMaterial({color:0xd9fff7,transparent:true,opacity:.95,depthWrite:false,toneMapped:false}),
       shock:new T.MeshBasicMaterial({color:0x9ff7ee,toneMapped:false}),
+      charge:new T.MeshBasicMaterial({color:0xff765d,transparent:true,opacity:.9,side:T.DoubleSide,depthTest:false,depthWrite:false,toneMapped:false}),
+      chargeTip:new T.MeshBasicMaterial({color:0xffebaf,depthTest:false,depthWrite:false,toneMapped:false}),
     };
   }
 
@@ -38,11 +43,29 @@ export class EffectsSystem{
     slow.visible=stagger.visible=false;
     group.add(slow,stagger);
     enemy.obj.add(group);
-    enemy.statusVfx={group,slow,stagger};
+    const charge=new T.Group(),ring=new T.Mesh(this.statusGeometry.chargeRing,this.materials.charge);
+    ring.rotation.x=-Math.PI/2;ring.position.y=.12;ring.renderOrder=7;charge.add(ring);
+    const count=enemy.type==='boss'?10:1;
+    for(let i=0;i<count;i++){
+      const spoke=new T.Group();spoke.rotation.y=i/count*Math.PI*2;
+      const line=new T.Mesh(this.statusGeometry.chargeLine,this.materials.charge);
+      line.position.set(0,.12,1.5);line.renderOrder=7;
+      const tip=new T.Mesh(this.statusGeometry.chargeArrow,this.materials.chargeTip);
+      tip.rotation.x=Math.PI/2;tip.position.set(0,.12,2.3);tip.renderOrder=8;
+      spoke.add(line,tip);charge.add(spoke);
+    }
+    charge.visible=false;group.add(charge);
+    enemy.statusVfx={group,slow,stagger,charge,chargeRing:ring};
   }
 
   updateEnemyStatus(enemy,time){
     const status=enemy.statusVfx;if(!status)return;
+    status.charge.visible=!!enemy.rangedWindup&&!enemy.dead&&!enemy.stunned;
+    if(status.charge.visible){
+      const progress=1-Math.max(0,enemy.attack)/enemy.rangedWindup.duration;
+      status.chargeRing.scale.setScalar(1.3-.3*progress);
+      status.charge.rotation.y=enemy.type==='boss'?-enemy.obj.rotation.y:0;
+    }
     status.slow.visible=enemy.slow>0;
     status.stagger.visible=enemy.stagger>0;
     if(status.slow.visible){
