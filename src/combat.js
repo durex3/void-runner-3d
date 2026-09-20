@@ -60,7 +60,8 @@ export class WeaponCombat{
         if(b.remaining<=0)break;if(e.dead||e.stunned)continue;b.hit.add(e);
         const distance=b.distance+length*t,p=b.profile,center=e.obj.position.clone();
         const falloff=p.effect==='shotgun'?T.MathUtils.clamp(1-Math.max(0,distance-4)*.075,.55,1):1;
-        this.hit(e,b.damage*falloff,p,false,p.effect==='orb'?'direct':'projectile');
+        const hitKind=p.effect==='orb'?'direct':p.effect==='shotgun'?(distance<4?'shotgun-close':'shotgun'):'projectile';
+        this.hit(e,b.damage*falloff,p,false,hitKind);
         if(p.effect==='shotgun'&&!b.knocked.has(e)){b.knocked.add(e);e.push=b.v.clone().setY(0).normalize().multiplyScalar(e.type==='boss'?1.9:9.5)}
         if(p.effect==='orb'){
           this.garden.pulse(center,2,p.radius,.2);

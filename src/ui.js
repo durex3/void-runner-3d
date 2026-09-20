@@ -89,7 +89,7 @@ export class GameView{
 
   renderLoadout(name,slot,onEquip){
     const role=this.heroes[name];
-    this.elements.weapons.innerHTML=role.weapons.map((weapon,index)=>{const detail=weapon.effect==='nature'?'范围冲击 · 减速 45%':weapon.detail.split(' · ')[0];return `<button class="weapon ${index===slot?'active':''}" data-weapon="${index}" aria-keyshortcuts="${index+1}" title="${weapon.detail}"><span class="weapon-key">${index+1}</span><span class="weapon-copy"><b>${weapon.label}</b><small class="weapon-detail">${detail}</small></span><span class="weapon-status" data-weapon-status="${index}">${index===slot?'可用':'待命'}</span></button>`}).join('');
+    this.elements.weapons.innerHTML=role.weapons.map((weapon,index)=>{const detail=weapon.damageTaken?'受伤 -20%':weapon.knock?'大范围 · 击退':weapon.stagger?'命中 · 硬直':weapon.effect==='nature'?'范围 · 减速 45%':weapon.effect==='pierce'?'穿透 3 个目标':weapon.effect==='shotgun'?'近距离 · 高伤击退':weapon.effect==='chain'?'连锁 4 个目标':weapon.effect==='orb'?'直击 · 范围溅射':weapon.detail.split(' · ')[0];return `<button class="weapon ${index===slot?'active':''}" data-weapon="${index}" aria-keyshortcuts="${index+1}" title="${weapon.detail}"><span class="weapon-key">${index+1}</span><span class="weapon-copy"><b>${weapon.label}</b><small class="weapon-detail">${detail}</small></span><span class="weapon-status" data-weapon-status="${index}">${index===slot?'可用':'待命'}</span></button>`}).join('');
     this.elements.roleDescription.textContent=`${role.label} · ${role.description}。${role.weapons.map(weapon=>weapon.label).join(' / ')}，局内按 ${role.weapons.map((_,index)=>index+1).join(' / ')} 切换。`;
     this.app.querySelectorAll('[data-weapon]').forEach(button=>button.onclick=()=>onEquip(Number(button.dataset.weapon)));
   }

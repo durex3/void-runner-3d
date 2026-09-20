@@ -29,7 +29,7 @@ export class RemoteVfx{
     if(profile.effect==='pierce'){this.bowImpact(position);return;}
     if(style.electric){this.sheet('lightning',position.clone().setY(1.6),2.1,.22,0xa5d8ff,'ranged-chain');return;}
     if(style.splash){this.atlas(12,position.clone().setY(1),3,.35,0xe0b4ff,'arcane-impact',7);return;}
-    if(style.dust){this.sheet('explosion',position.clone().setY(1),style.dust?1.8:2.5,.34,style.hitColor,'ranged-hit');return;}
+    if(style.dust){const close=kind==='shotgun-close';this.sheet('explosion',position.clone().setY(1),close?2.45:1.8,close?.42:.34,style.hitColor,'ranged-hit');if(close)this.ground('circle',position.clone().setY(.05),1.15,.3,0xffd28a,'shotgun-blast');return;}
     this.atlas(profile.effect==='pierce'?6:7,position.clone().setY(1),profile.effect==='pierce'?1.65:profile.effect==='mobile'?1.35:2.4,profile.effect==='mobile'?.14:profile.effect==='pierce'?.16:.25,profile.effect==='mobile'?0x92ffc1:style.hitColor,'ranged-hit',profile.effect==='pierce'?6:5);
   }
   bowImpact(position){

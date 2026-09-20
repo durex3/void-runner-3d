@@ -41,6 +41,7 @@ export class RelicWorkshopGame{
     this.cameraKick=0;
     this.cameraKickTime=0;
     this.cameraKickDuration=0;
+    this.mechanicsSeen=new Set();
     this.reducedMotion=globalThis.matchMedia?.('(prefers-reduced-motion: reduce)').matches??false;
     this.best=this.readBest();
   }
@@ -93,8 +94,8 @@ export class RelicWorkshopGame{
       scene:this.scene,hero:this.hero,state:this.state,enemies:()=>this.enemies,damage:(...args)=>this.damageEnemy(...args),garden:this.garden,
       onFire:(profile,context)=>{Actors.kickActor(this.hero,this.state.rate);this.meleeVfx.beginSwing(this.hero);const direction=new T.Vector3(Math.sin(this.hero.rotation.y),0,Math.cos(this.hero.rotation.y));this.remoteVfx.fire(profile,this.hero.position,direction,context);this.audio.play([600,180,850,240][profile.type],.07,profile.type===1?'sawtooth':'triangle',.018)},
       effect:(object,life)=>this.effects.add(object,life,{fixed:true,cleanup:o=>o.userData.dispose?.()}),
-      onHit:event=>{this.remoteVfx.hit(event.profile,event.position,event.kind);if(event.kind==='nature-area'&&event.profile.slow&&event.affected){const percent=Math.round((1-.55)*100);this.view.showToast(`德鲁伊法杖 · ${event.affected} 个目标减速 ${percent}% · 持续 ${event.profile.slow.toFixed(1)} 秒`,1.5)}},
-      onMeleeImpact:event=>{this.meleeVfx.play({...event,actor:this.hero});this.applyMeleeFeedback(event);if(event.profile.knock&&event.targets.length)this.view.showToast(`双手剑 · ${event.targets.length} 个目标被击退`,1.1)},
+      onHit:event=>{this.remoteVfx.hit(event.profile,event.position,event.kind);if(event.kind==='nature-area'&&event.profile.slow&&event.affected){const percent=Math.round((1-.55)*100);this.showMechanicOnce('druid-slow',`德鲁伊法杖 · 范围内目标减速 ${percent}% · 持续 ${event.profile.slow.toFixed(1)} 秒`) }if(event.profile.effect==='pierce')this.showMechanicOnce('ranger-pierce','猎手长弓 · 穿透最多 3 个目标');if(event.kind==='shotgun-close')this.showMechanicOnce('shotgun-close','炼金霰弹 · 近距离命中伤害更高');if(event.profile.effect==='chain')this.showMechanicOnce('druid-chain','雷鸣法杖 · 命中后连锁附近敌人');if(event.kind==='splash')this.showMechanicOnce('druid-splash','聚能魔杖 · 命中后产生范围溅射')},
+      onMeleeImpact:event=>{this.meleeVfx.play({...event,actor:this.hero});this.applyMeleeFeedback(event);if(event.profile.knock&&event.targets.length)this.showMechanicOnce('knight-knock',`双手剑 · 命中并击退 ${event.targets.length} 个目标`);if(event.profile.stagger&&event.targets.length)this.showMechanicOnce('knight-stagger','震击钉锤 · 命中后使普通敌人硬直')},
     });
     this.lastFrame=performance.now();
     this.uiElapsed=0;
@@ -169,7 +170,10 @@ export class RelicWorkshopGame{
     this.clearObjects(this.drops);
     this.clearObjects(this.hazards);
     this.effects.clear();
+    this.mechanicsSeen.clear();
   }
+
+  showMechanicOnce(key,message){if(this.mechanicsSeen.has(key))return false;this.mechanicsSeen.add(key);this.view.showToast(message,1.8);return true}
 
   clearObjects(list,skip=new Set()){
     for(const item of list){
@@ -264,7 +268,9 @@ export class RelicWorkshopGame{
 
   hurt(amount){
     if(this.state.inv>0)return;
-    amount*=this.hero.userData.profile.damageTaken||1;
+    const reduction=this.hero.userData.profile.damageTaken||1;
+    if(reduction<1){this.showMechanicOnce('knight-shield','守卫剑盾 · 受到伤害减少 20%');this.effects.guardFlash(this.hero.position)}
+    amount*=reduction;
     this.state.hp=Math.max(0,this.state.hp-amount);
     Actors.hitActor(this.hero);
     this.state.inv=.65;

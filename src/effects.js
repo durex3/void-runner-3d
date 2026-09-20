@@ -118,6 +118,13 @@ export class EffectsSystem{
     }
   }
 
+  guardFlash(position){
+    const geometry=new T.RingGeometry(.58,.9,40),material=new T.MeshBasicMaterial({color:0xb9f7ff,transparent:true,opacity:.95,side:T.DoubleSide,depthWrite:false,toneMapped:false,blending:T.AdditiveBlending});
+    const ring=new T.Mesh(geometry,material);ring.position.copy(position).setY(.06);ring.rotation.x=-Math.PI/2;ring.userData.remoteVfx='guard-flash';
+    const added=this.add(ring,.28,{fixed:true,update:({progress})=>{const eased=1-(1-progress)**2;ring.scale.setScalar(.78+eased*.9);material.opacity=.95*(1-progress)**1.8},cleanup:()=>{geometry.dispose();material.dispose()}});
+    if(!added){geometry.dispose();material.dispose()}
+  }
+
   addCorpse(object,life=1.6){this.corpses.push({obj:object,life})}
 
   update(dt,time,mode){
