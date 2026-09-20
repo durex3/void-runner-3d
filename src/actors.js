@@ -7,9 +7,10 @@ export {HEROES} from './loadouts.js';
 const loader=new GLTFLoader(), models=new Map(), weapons=new Map(), clips=new Map(),props=new Map();
 const propNames=['turret_base','arrow_crossbow_bundle','potion_large_orange','potion_large_blue','potion_medium_red','spellbook_open','spellbook_closed'];
 export function cloneProp(name){const source=props.get(name)||weapons.get(name);if(!source)throw new Error(`Prop not loaded: ${name}`);return source.clone(true)}
-const characterNames=['Ranger','Knight','Druid','Engineer','Skeleton_Warrior','Skeleton_Rogue','Skeleton_Mage','Skeleton_Golem','Necromancer'];
+const characterNames=['Ranger','Knight','Druid','Engineer','Skeleton_Warrior','Skeleton_Rogue','Skeleton_Mage','Skeleton_Golem','Necromancer','BlackKnight'];
 const weaponNames=[...new Set(Object.values(HEROES).flatMap(h=>h.weapons.flatMap(w=>[w.model,...(w.offhand?[w.offhand]:[])]))),'Skeleton_Blade','Skeleton_Dagger','Skeleton_Staff','Skeleton_Golem_Axe'];
 export async function preloadActors(progress=()=>{}){
+  if(!weaponNames.includes('BlackKnight_Sword_Large'))weaponNames.push('BlackKnight_Sword_Large');
   let done=0;
   const jobs=[...characterNames.map(name=>({name,kind:'characters',ext:'glb',map:models})),...weaponNames.map(name=>({name,kind:'weapons',ext:'gltf',map:weapons})),...['Medium','Large'].flatMap(rig=>['General','MovementBasic'].map(action=>({name:`Rig_${rig}_${action}`,kind:'animations',ext:'glb',rig})))];
   jobs.push(...propNames.map(name=>({name,kind:'props',ext:'gltf',map:props})));
@@ -52,7 +53,7 @@ function install(actor,name){
   const model=clone(models.get(name));actor.add(model);
   const large=name==='Skeleton_Golem';
   const bounds=new T.Box3().setFromObject(model),height=bounds.getSize(new T.Vector3()).y;
-  model.scale.setScalar((large?3.65:2.05)/height);
+  model.scale.setScalar((large?3.65:name==='BlackKnight'?4.16:2.05)/height);
   const held=new T.Group();const slot=bone(model,'handslot.r');(slot||model).add(held);
   const offhand=new T.Group();bone(model,'handslot.l').add(offhand);
   const r={model,name,large,held,offhand,layered:name==='Knight',mixer:new T.AnimationMixer(model),phase:0,kick:0,current:null,base:null,dead:false,hit:0,attackLeft:0,
@@ -64,8 +65,18 @@ export function selectHero(hero,name){if(!HEROES[name])return false;install(hero
 export function equipActor(actor,slot=0){const profile=HEROES[actor.userData.rig.name]?.weapons[slot];if(!profile)return false;actor.userData.weapon=profile.type;actor.userData.weaponModel=profile.model;actor.userData.loadout=slot;actor.userData.profile=profile;const r=actor.userData.rig;bone(r.model,profile.grip==='bow'?'handslot.l':'handslot.r').add(r.held);mountWeapon(actor,profile.model);r.offhand.clear();if(profile.offhand)r.offhand.add(weapons.get(profile.offhand).clone(true));if(r.layered){r.attackAction?.stop();r.upperIdle?.stop();r.attackLeft=0;r.held.quaternion.identity();r.upperIdle=action(r,profile.stance,false,'upper')}return true}
 export function createCreature(type){
   const root=new T.Group();root.userData.type=type;
+  if(type==='blackknight'){
+    install(root,'BlackKnight');mountWeapon(root,'BlackKnight_Sword_Large');
+    const r=root.userData.rig;r.layered=true;r.current=null;locomotion(r,'Idle_A');
+    root.userData.profile={stance:'Melee_2H_Idle'};r.upperIdle=action(r,'Melee_2H_Idle',false,'upper');return root;
+  }
   install(root,({brute:'Skeleton_Warrior',runner:'Skeleton_Rogue',spitter:'Skeleton_Mage',boss:'Skeleton_Golem',necromancer:'Necromancer'})[type]||'Skeleton_Warrior');
   mountWeapon(root,({brute:'Skeleton_Blade',runner:'Skeleton_Dagger',spitter:'Skeleton_Staff',boss:'Skeleton_Golem_Axe',necromancer:'Skeleton_Staff'})[type]);return root;
+}
+export function playEnemyAttack(actor,clip,duration){
+  const r=actor.userData.rig;r.attackAction?.stop();r.upperIdle?.stop();
+  r.attackAction=action(r,clip,true,'upper');r.attackLeft=duration;
+  if(r.attackAction)r.attackAction.timeScale=r.attackAction.getClip().duration/duration;
 }
 export function kickActor(actor,rate=1){const r=actor.userData.rig;if(!r||r.dead)return;r.kick=1;if(r.layered){const p=actor.userData.profile;r.attackAction?.stop();r.upperIdle?.stop();r.attackAction=action(r,p.animation,true,'upper');r.attackLeft=p.interval/rate;r.attackAction.timeScale=r.attackAction.getClip().duration/(p.model==='sword_2handed'?p.delay/rate/.52:r.attackLeft);r.attackAction.fadeIn(.045);r.attackClip=p.animation}}
 export function hitActor(actor,strength=.55){const r=actor.userData.rig;if(!r||r.dead||r.hit>0)return;const shield=!!(r.layered&&actor.userData.profile?.offhand),duration=shield?.34:.16+strength*.14;r.hit=duration;r.hitAction=action(r,shield?'Melee_Block_Hit':'Hit_A',true,r.layered?'upper':'full');if(r.hitAction){r.hitAction.time=Math.min(shield?.1:.08,r.hitAction.getClip().duration*.22);r.hitAction.setEffectiveWeight(shield?Math.min(1,strength+.25):strength);r.hitAction.fadeIn(.025)}}

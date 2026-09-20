@@ -18,6 +18,9 @@ import {InputController} from './input-controller.js';
 import {createSceneRuntime,createRing} from './scene-runtime.js';
 import {GameView} from './ui.js';
 import {createUpgradeChoices} from './upgrades.js';
+import {LEVELS,FURNACE_WAVES,FurnaceCycle} from './levels.js';
+import {createFurnaceWorld} from './furnace-world.js';
+import {FurnaceCombat} from './furnace-combat.js';
 
 const MELEE_FEEDBACK={
   sword_1handed:{freeze:.025,shake:.035,reaction:.68},
@@ -32,6 +35,7 @@ export class RelicWorkshopGame{
     this.view.mount();
     this.audio=new AudioService();
     this.state=createGameState();
+    this.state.chapter='ruins';
     this.enemies=[];
     this.drops=[];
     this.hazards=[];
@@ -51,9 +55,12 @@ export class RelicWorkshopGame{
     document.body.dataset.actors='loaded';
     this.view.setBest(this.best);
     this.setupRuntime();
+    for(;;){try{this.furnaceWorld=await createFurnaceWorld(this.scene);break}catch(error){console.error(error);this.view.setLoadError();await this.view.waitForRetry()}}
     await Promise.all([this.meleeVfx.ready,this.remoteVfx.ready,preloadProjectileAssets(),this.effects.ready,preloadGardenEffects()]);
     document.body.dataset.effects='loaded';
     this.bindControls();
+    this.view.setReady();
+    this.chooseLevel('ruins');
     this.equip();
     await this.exposeTestApi();
     this.loadNature();
@@ -80,7 +87,13 @@ export class RelicWorkshopGame{
     this.scene=runtime.scene;
     this.renderer=runtime.renderer;
     this.camera=runtime.camera;setProjectileCamera(this.camera);
+    const existing=new Set(this.scene.children);
     this.world=createWorld(this.scene);
+    this.ruinsRoot=new T.Group();
+    for(const object of [...this.scene.children])if(!existing.has(object)&&!object.isLight)this.ruinsRoot.add(object);
+    this.scene.add(this.ruinsRoot);
+    this.furnaceCycle=new FurnaceCycle();
+    this.furnaceCombat=new FurnaceCombat(this);
     this.hero=Actors.createHero(this.scene).hero;
     this.hero.add(createRing(.8,.05,0xffffff));
     this.effects=new EffectsSystem({scene:this.scene,animateActor:Actors.animateActor,disposeActor:Actors.disposeActor});
@@ -102,12 +115,19 @@ export class RelicWorkshopGame{
   }
 
   bindControls(){
+    this.view.bindLevels(id=>this.chooseLevel(id));
     this.view.bind({onStart:()=>this.start(),onCharacter:name=>this.chooseHero(name),onPause:()=>this.pause(),onSound:()=>this.view.setSoundMuted(this.audio.toggle()),onDash:()=>this.dash(),onGuide:()=>this.openGuide()});
     this.input=new InputController({root:this.app,onDash:()=>this.dash(),onPause:fromBlur=>{if(!fromBlur||this.state.mode==='playing')this.pause()},onWeapon:slot=>{if(['title','playing','paused'].includes(this.state.mode))this.equip(slot)}});
   }
 
-  readBest(){try{return Number(localStorage.getItem('ember-best'))||0}catch{return 0}}
-  saveBest(){try{localStorage.setItem('ember-best',this.best)}catch{}}
+  readBest(){try{return Number(localStorage.getItem(this.state.chapter==='furnace'?'ember-best-furnace':'ember-best'))||0}catch{return 0}}
+  saveBest(){try{localStorage.setItem(this.state.chapter==='furnace'?'ember-best-furnace':'ember-best',this.best)}catch{}}
+
+  chooseLevel(id){
+    if(this.state.mode!=='title'||!LEVELS[id])return false;
+    this.state.chapter=id;this.ruinsRoot.visible=id==='ruins';this.furnaceWorld.root.visible=id==='furnace';
+    this.best=this.readBest();this.view.setBest(this.best);this.view.selectLevel(id);return true;
+  }
 
   equip(slot=this.state.loadout){
     const previous=this.state.loadout;
@@ -159,6 +179,8 @@ export class RelicWorkshopGame{
   }
 
   clearRun(){
+    this.furnaceCombat.reset();this.furnaceCycle.reset();this.state.furnaceStatus='';
+    this.furnaceWorld.update(this.furnaceCycle,0);
     this.combat.reset();
     this.garden.reset();
     this.pendingElite=null;
@@ -186,6 +208,14 @@ export class RelicWorkshopGame{
   }
 
   beginWave(){
+    if(this.state.chapter==='furnace'){
+      const wave=FURNACE_WAVES[this.state.wave-1];
+      this.state.remaining=wave.count;this.state.spawn=wave.grace;this.state.waveTime=0;
+      this.furnaceCycle.reset(wave.grace+2);
+      if([2,4,6].includes(this.state.wave))this.spawnEnemy(this.state.wave===4?'runner':'brute',true);
+      this.view.showToast(`第 ${this.state.wave} 波 · ${wave.label}`);
+      if(this.state.wave===8)this.spawnEnemy('boss');return;
+    }
     this.state.remaining=this.state.wave===8?8:6+this.state.wave*3;
     this.state.spawn=.6;
     this.state.waveTime=0;
@@ -195,17 +225,21 @@ export class RelicWorkshopGame{
   }
 
   spawnEnemy(force,elite=false){
-    const type=force||(this.state.wave>2&&Math.random()<.27?'spitter':Math.random()<.3?'runner':'brute');
+    const furnace=this.state.chapter==='furnace',pool=FURNACE_WAVES[this.state.wave-1].pool;
+    const type=force||(furnace?pool[Math.floor(Math.random()*pool.length)]:(this.state.wave>2&&Math.random()<.27?'spitter':Math.random()<.3?'runner':'brute'));
     const angle=Math.random()*Math.PI*2;
-    const object=Actors.createCreature(elite&&type==='brute'?'necromancer':type);
+    const object=Actors.createCreature(furnace&&type==='boss'?'blackknight':elite&&type==='brute'?'necromancer':type);
     object.position.set(Math.cos(angle)*20,0,Math.sin(angle)*20);
     this.scene.add(object);
     const size=type==='boss'?2.1:type==='runner'?.6:.85;
     if(elite)this.addEliteCrown(object,type);
     const hp=elite?150+this.state.wave*15:type==='boss'?1500:type==='runner'?25:45+this.state.wave*5;
     const enemy={obj:object,type,elite,stunned:false,slow:0,hp,maxHp:hp,size,speed:type==='boss'?1.1:type==='runner'?3.5:1.6+this.state.wave*.06,attack:1.5};
+    enemy.customBoss=furnace&&type==='boss';
+    if(enemy.customBoss){enemy.size=1.3;enemy.hp=enemy.maxHp=2000;object.position.set(0,0,-16)}
     this.effects.attachEnemyStatus(enemy);
     this.enemies.push(enemy);
+    return enemy;
   }
 
   addEliteCrown(object,type){
@@ -224,9 +258,10 @@ export class RelicWorkshopGame{
     const reaction=MELEE_FEEDBACK[source.model]?.reaction??.55;
     Actors.hitActor(enemy.obj,reaction);
     this.effects.burst(enemy.obj.position,0xfbc47b,3);
-    if(enemy.elite&&enemy.hp<=enemy.maxHp*.3){enemy.hp=Math.max(1,enemy.hp);enemy.stunned=true;enemy.rangedWindup=null;this.effects.updateEnemyStatus(enemy,this.state.time);this.pendingElite=enemy;return}
+    if(enemy.elite&&enemy.hp<=enemy.maxHp*.3){this.furnaceCombat.cancel(enemy);enemy.hp=Math.max(1,enemy.hp);enemy.stunned=true;enemy.rangedWindup=null;this.effects.updateEnemyStatus(enemy,this.state.time);this.pendingElite=enemy;return}
     if(enemy.hp>0)return;
     enemy.dead=true;
+    this.furnaceCombat.cancel(enemy);
     enemy.rangedWindup=null;
     this.effects.updateEnemyStatus(enemy,this.state.time);
     this.garden.cancelStomps(enemy);
@@ -267,6 +302,7 @@ export class RelicWorkshopGame{
   }
 
   hurt(amount){
+    if(['won','lost','title'].includes(this.state.mode))return;
     if(this.state.inv>0)return;
     const reduction=this.hero.userData.profile.damageTaken||1;
     if(reduction<1){this.showMechanicOnce('knight-shield','守卫剑盾 · 受到伤害减少 20%');const facing=new T.Vector3(Math.sin(this.hero.rotation.y),0,Math.cos(this.hero.rotation.y));this.effects.guardFlash(this.hero.position,facing)}
@@ -291,11 +327,12 @@ export class RelicWorkshopGame{
 
   finish(win){
     this.state.mode=win?'won':'lost';
+    this.furnaceCombat.reset();this.furnaceCycle.suppress();this.furnaceWorld.update(this.furnaceCycle,this.state.time);
     if(!win)Actors.dieActor(this.hero);
     this.input.clear();
     this.best=Math.max(this.best,this.state.kills);
     this.saveBest();
-    this.view.showFinish({win,state:this.state,garden:this.garden,best:this.best,onRestart:()=>this.start(),onChangeHero:()=>this.returnToTitle()});
+    this.view.showFinish({win,state:this.state,garden:this.garden,best:this.best,onRestart:()=>this.start(),onChangeHero:()=>this.returnToTitle(),onNext:()=>{this.returnToTitle();this.chooseLevel('furnace');this.start()}});
   }
 
   pause(){
@@ -325,11 +362,20 @@ export class RelicWorkshopGame{
     this.updatePlayer(dt);
     this.updateWaveSpawning(dt);
     this.updateEnemies(dt);
+    if(this.state.mode!=='playing')return;
     this.combat.step(dt);
     this.updateHazards(dt);
     this.updateDrops(dt);
     if(this.state.mode!=='playing')return;
     this.garden.step(dt,this.drops,amount=>this.hurt(amount));
+    if(this.state.chapter==='furnace'&&this.state.mode==='playing'){
+      const boss=this.enemies.find(e=>e.customBoss&&!e.dead);
+      if(this.state.wave<8||boss?.furnaceAction?.phase==='forge')this.furnaceCycle.step(dt,this.state.wave);
+      else this.furnaceCycle.suppress();
+      this.state.furnaceStatus=this.furnaceCycle.phase==='warning'?'地火预警 · 离开炉栅':this.furnaceCycle.phase==='burn'?'炉栅喷火 · 绕行石板':'';
+      this.furnaceWorld.update(this.furnaceCycle,this.state.time);
+      if(this.furnaceCycle.hits(this.hero.position))this.hurt(10);
+    }
     if(this.state.mode!=='playing')return;
     if(this.pendingElite){this.captureChoice();return}
     this.advanceWaveIfCleared();
@@ -354,13 +400,17 @@ export class RelicWorkshopGame{
 
   updateWaveSpawning(dt){
     this.state.spawn-=dt;
-    if(this.state.remaining>0&&this.state.spawn<=0){this.spawnEnemy();this.state.remaining--;this.state.spawn=Math.max(.4,1.1-this.state.wave*.06)}
+    if(this.state.remaining>0&&this.state.spawn<=0){this.spawnEnemy();this.state.remaining--;this.state.spawn=this.state.chapter==='furnace'?FURNACE_WAVES[this.state.wave-1].interval:Math.max(.4,1.1-this.state.wave*.06)}
     if(this.state.shot<=0)this.attack();
   }
 
   updateEnemies(dt){
     for(const enemy of this.enemies){
       if(enemy.dead||enemy.stunned)continue;
+      if(this.state.mode!=='playing')break;
+      if(this.state.chapter==='furnace'&&(enemy.customBoss||enemy.type==='runner')){
+        this.furnaceCombat.step(enemy,dt);this.effects.updateEnemyStatus(enemy,this.state.time);continue;
+      }
       if(enemy.type==='boss'&&(enemy.recovery>0||this.garden.effects.some(f=>f.stomp&&f.source===enemy))){
         enemy.recovery=Math.max(0,(enemy.recovery||0)-dt);
         this.effects.updateEnemyStatus(enemy,this.state.time);
@@ -421,6 +471,7 @@ export class RelicWorkshopGame{
   }
 
   fireEnemyProjectiles(enemy,direction){
+    if(this.enemies.some(e=>e.customBoss&&!e.dead&&e.recovery>0)){enemy.attack=1;return}
     enemy.attack=enemy.type==='boss'?2:3;
     const boss=enemy.type==='boss',pattern=enemy.rangedWindup?.pattern||'ring';
     const angles=boss?bossShotAngles(pattern):[0];
@@ -475,7 +526,8 @@ export class RelicWorkshopGame{
     if(this.state.mode==='title'){
       this.hero.position.set(4,0,2);this.hero.rotation.y=now*.0003;Actors.animateActor(this.hero,dt,now/1000,0);this.camera.position.set(30,31,37);this.camera.lookAt(0,0,0);return;
     }
-    const target=this.hero.position.clone().multiplyScalar(.35);
+    const follow=this.state.chapter==='furnace'&&this.camera.aspect<.85?1:.35;
+    const target=this.hero.position.clone().multiplyScalar(follow);
     this.camera.position.lerp(new T.Vector3(target.x+20,27,target.z+24),1-Math.exp(-dt*4));
     this.cameraKickTime=Math.max(0,this.cameraKickTime-dt);
     if(this.cameraKickTime>0){
@@ -487,12 +539,13 @@ export class RelicWorkshopGame{
     this.camera.lookAt(target.x,0,target.z);
   }
 
-  loadNature(){loadNatureAssets(this.scene).then(()=>{document.body.dataset.nature='loaded'}).catch(()=>{document.body.dataset.nature='fallback'})}
+  loadNature(){loadNatureAssets(this.ruinsRoot).then(()=>{document.body.dataset.nature='loaded'}).catch(()=>{document.body.dataset.nature='fallback'})}
 
   async exposeTestApi(){
     if(!new URLSearchParams(location.search).has('test'))return;
     const game=this;
     window.__game={
+      chooseLevel:id=>game.chooseLevel(id),furnaceCycle:this.furnaceCycle,furnaceCombat:this.furnaceCombat,furnaceWorld:this.furnaceWorld,beginWave:()=>game.beginWave(),pause:()=>game.pause(),dash:()=>game.dash(),setManual:value=>{game.testLab={manual:value}},render:()=>{game.updateCamera(1,performance.now());game.view.renderHud(game.state,game.garden,game.enemies,game.currentStats(),game.currentDevices());game.renderer.render(game.scene,game.camera)},
       THREE:T,actors:Actors,state:this.state,hero:this.hero,garden:this.garden,combat:this.combat,effects:this.effects,meleeVfx:this.meleeVfx,remoteVfx:this.remoteVfx,audio:this.audio,
       get enemies(){return game.enemies},get drops(){return game.drops},get bullets(){return game.combat.bullets},get hazards(){return game.hazards},get corpses(){return game.effects.corpses},
       selectHero:Actors.selectHero,chooseHero:name=>game.chooseHero(name),returnToTitle:()=>game.returnToTitle(),equip:slot=>game.equip(slot),attack:()=>game.attack(),tick:dt=>game.tick(dt),damageEnemy:(...args)=>game.damageEnemy(...args),hurt:amount=>game.hurt(amount),levelUp:()=>game.levelUp(),finish:win=>game.finish(win),start:()=>game.start(),spawnEnemy:(...args)=>game.spawnEnemy(...args),renderer:this.renderer,scene:this.scene,camera:this.camera,get lastMeleeFeedback(){return game.lastMeleeFeedback},

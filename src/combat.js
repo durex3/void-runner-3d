@@ -72,6 +72,10 @@ export class WeaponCombat{
       b.distance+=length;
     }
     this.bullets=this.bullets.filter(b=>{if(b.life<=0){this.scene.remove(b.obj);b.obj.userData.dispose?.();return false}return true});
-    for(const e of this.targets())if(e.push){e.obj.position.addScaledVector(e.push,(1-Math.exp(-12*dt))/12);e.push.multiplyScalar(Math.exp(-12*dt));if(e.obj.position.length()>20)e.obj.position.setLength(20);if(e.push.lengthSq()<.01)delete e.push}
+    for(const e of this.targets())if(e.push){
+      // A committed furnace attack must stay aligned with its locked ground warning.
+      if(e.customBoss&&e.furnaceAction&&e.furnaceAction.phase!=='recovery'){delete e.push;continue}
+      e.obj.position.addScaledVector(e.push,(1-Math.exp(-12*dt))/12);e.push.multiplyScalar(Math.exp(-12*dt));if(e.obj.position.length()>20)e.obj.position.setLength(20);if(e.push.lengthSq()<.01)delete e.push;
+    }
   }
 }

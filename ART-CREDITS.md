@@ -1,6 +1,6 @@
 # 美术来源与许可
 
-核对日期：2026-09-20。当前采用 KayKit 角色与道具、Kenney 树岩、外部特效贴图及项目程序化美术。用户原始资源保持不变，运行副本位于 `public/assets/`。
+核对日期：2026-09-21。当前采用 KayKit 角色与道具、Kenney 树岩、外部特效贴图及项目程序化美术。用户原始资源保持不变，运行副本位于 `public/assets/`。
 
 ## KayKit
 
@@ -9,6 +9,8 @@
 | [Adventurers 2.0 EXTRA](https://kaylousberg.itch.io/kaykit-adventurers) | Knight、Ranger、Engineer、Druid；弓弩、霰弹、三种法杖/魔杖、单手剑、双手剑、圆盾与道具 |
 | [Skeletons 1.1 EXTRA](https://kaylousberg.itch.io/kaykit-skeletons) | Skeleton_Warrior、Skeleton_Rogue、Skeleton_Mage、Necromancer、Skeleton_Golem，敌人装备及玩家 Skeleton_Mace |
 | [Character Animations 1.1](https://kaylousberg.itch.io/kaykit-character-animations) | Rig_Medium_CombatMelee：骑士单手斜斩、单手下砸、双手下劈、双手持握、持盾及格挡受击 |
+| [Dungeon Pack 1.1 EXTRA](https://kaylousberg.itch.io/kaykit-dungeon-pack) | 熔炉要塞地砖、炉栅、墙、拱门、柱、旗帜、脚手架、火把与岩石 |
+| Mystery Monthly Series 5（[作者主页](https://kaylousberg.itch.io)） | September 2024 Black Knight：黑骑士角色与双手重剑；共用项目已有 Medium 骨骼动作 |
 
 所用文件随附许可均为 **CC0**。EXTRA / FREE 原文件在 `references/purchased/`，Character Animations 源文件在桌面 `美术资源/KayKit_Character_Animations_1.1/` 内。运行副本在 `public/assets/kaykit/`。
 
@@ -23,6 +25,8 @@
 装置与掉落使用 turret_base、arrow_crossbow_bundle、potion_large_orange、potion_large_blue、potion_medium_red、spellbook_open、spellbook_closed。弩台由底座和弩组合，炸瓶与法典使用原模型；符文底盘为程序化几何体。
 
 ## Kenney 与项目生成内容
+
+第二关资源由 `tools/import-furnace-assets.mjs` 从购买原包提取，路径、依赖和来源见 [第二关资源清单](./public/assets/furnace/manifest.json)。随包 CC0 许可副本：[Dungeon](./public/assets/furnace/DUNGEON-LICENSE.txt)、[Series 5](./public/assets/furnace/SERIES-5-LICENSE.txt)。仅复制使用的模型、纹理和依赖，不包含整套购买包。炉火与攻击预警为程序化几何体。黑骑士复用官方双手下劈、刺击和持握分层动作；普通骷髅攻击仍由程序辅助。
 
 - [Nature Kit 2.1](https://kenney.nl/assets/nature-kit)：CC0，当前加载 `tree_oak.glb`、`rock_largeA.glb` 并调整配色。[原始许可](./public/assets/nature/License.txt)。
 - [Particle Pack 1.1](https://kenney.nl/assets/particle-pack)：CC0，骑士近战使用精选的斩击、冲击环、尘土和命中贴图，并由 Three.js 控制颜色、范围与生命周期。[原始许可](./public/assets/effects/kenney/LICENSE.txt)。
@@ -43,7 +47,7 @@
 
 - [Kenney City Kit Industrial 2.0](https://kenney.nl/assets/city-kit-industrial)：CC0，历史文件在 `public/assets/industrial/`，当前场景不加载。`src/apocalypse.js`、`src/world.js` 未被当前入口使用；当前仍使用 `src/apocalypse.css`。
 - 用户提供的 Bilibili 视频仅作风格与玩法参考；`references/` 中封面与关键帧不作为游戏资产展示或打包。
-- 未接入 Synty、Quaternius 或 KayKit Dungeon Remastered。库存模型不等于当前已开放玩法，见 [武器素材清单](./武器素材清单.md)。
+- 未接入 Synty 或 Quaternius。Dungeon Pack 已用于第二关；Series 5 仅接入黑骑士，其他角色仍为库存。库存模型不等于当前已开放玩法，见 [武器素材清单](./武器素材清单.md)。
 
 Vite 会把 `public/` 中保留的历史资产一并复制到构建目录；“当前不加载”不代表已从发行文件中剔除。
 

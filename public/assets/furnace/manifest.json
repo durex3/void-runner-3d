@@ -1,0 +1,109 @@
+{
+  "license": "CC0-1.0",
+  "sources": [
+    "https://kaylousberg.itch.io/kaykit-dungeon-pack",
+    "https://kaylousberg.itch.io"
+  ],
+  "files": [
+    {
+      "source": "references/purchased/KayKit_Dungeon_Pack_1.1_EXTRA/Assets/gltf/floor_tile_large.gltf",
+      "target": "public/assets/furnace/dungeon/floor_tile_large.gltf"
+    },
+    {
+      "source": "references/purchased/KayKit_Dungeon_Pack_1.1_EXTRA/Assets/gltf/floor_tile_large.bin",
+      "target": "public/assets/furnace/dungeon/floor_tile_large.bin"
+    },
+    {
+      "source": "references/purchased/KayKit_Dungeon_Pack_1.1_EXTRA/Assets/gltf/dungeon_texture.png",
+      "target": "public/assets/furnace/dungeon/dungeon_texture.png"
+    },
+    {
+      "source": "references/purchased/KayKit_Dungeon_Pack_1.1_EXTRA/Assets/gltf/floor_tile_big_grate.gltf",
+      "target": "public/assets/furnace/dungeon/floor_tile_big_grate.gltf"
+    },
+    {
+      "source": "references/purchased/KayKit_Dungeon_Pack_1.1_EXTRA/Assets/gltf/floor_tile_big_grate.bin",
+      "target": "public/assets/furnace/dungeon/floor_tile_big_grate.bin"
+    },
+    {
+      "source": "references/purchased/KayKit_Dungeon_Pack_1.1_EXTRA/Assets/gltf/wall.gltf",
+      "target": "public/assets/furnace/dungeon/wall.gltf"
+    },
+    {
+      "source": "references/purchased/KayKit_Dungeon_Pack_1.1_EXTRA/Assets/gltf/wall.bin",
+      "target": "public/assets/furnace/dungeon/wall.bin"
+    },
+    {
+      "source": "references/purchased/KayKit_Dungeon_Pack_1.1_EXTRA/Assets/gltf/wall_arched.gltf",
+      "target": "public/assets/furnace/dungeon/wall_arched.gltf"
+    },
+    {
+      "source": "references/purchased/KayKit_Dungeon_Pack_1.1_EXTRA/Assets/gltf/wall_arched.bin",
+      "target": "public/assets/furnace/dungeon/wall_arched.bin"
+    },
+    {
+      "source": "references/purchased/KayKit_Dungeon_Pack_1.1_EXTRA/Assets/gltf/pillar.gltf",
+      "target": "public/assets/furnace/dungeon/pillar.gltf"
+    },
+    {
+      "source": "references/purchased/KayKit_Dungeon_Pack_1.1_EXTRA/Assets/gltf/pillar.bin",
+      "target": "public/assets/furnace/dungeon/pillar.bin"
+    },
+    {
+      "source": "references/purchased/KayKit_Dungeon_Pack_1.1_EXTRA/Assets/gltf/scaffold_frame_large.gltf",
+      "target": "public/assets/furnace/dungeon/scaffold_frame_large.gltf"
+    },
+    {
+      "source": "references/purchased/KayKit_Dungeon_Pack_1.1_EXTRA/Assets/gltf/scaffold_frame_large.bin",
+      "target": "public/assets/furnace/dungeon/scaffold_frame_large.bin"
+    },
+    {
+      "source": "references/purchased/KayKit_Dungeon_Pack_1.1_EXTRA/Assets/gltf/banner_red.gltf",
+      "target": "public/assets/furnace/dungeon/banner_red.gltf"
+    },
+    {
+      "source": "references/purchased/KayKit_Dungeon_Pack_1.1_EXTRA/Assets/gltf/banner_red.bin",
+      "target": "public/assets/furnace/dungeon/banner_red.bin"
+    },
+    {
+      "source": "references/purchased/KayKit_Dungeon_Pack_1.1_EXTRA/Assets/gltf/rocks.gltf",
+      "target": "public/assets/furnace/dungeon/rocks.gltf"
+    },
+    {
+      "source": "references/purchased/KayKit_Dungeon_Pack_1.1_EXTRA/Assets/gltf/rocks.bin",
+      "target": "public/assets/furnace/dungeon/rocks.bin"
+    },
+    {
+      "source": "references/purchased/KayKit_Dungeon_Pack_1.1_EXTRA/Assets/gltf/torch_mounted.gltf",
+      "target": "public/assets/furnace/dungeon/torch_mounted.gltf"
+    },
+    {
+      "source": "references/purchased/KayKit_Dungeon_Pack_1.1_EXTRA/Assets/gltf/torch_mounted.bin",
+      "target": "public/assets/furnace/dungeon/torch_mounted.bin"
+    },
+    {
+      "source": "references/purchased/KayKit_Mystery_Monthly_Series_5/3 - September 2024 - Black Knight/characters/BlackKnight.glb",
+      "target": "public/assets/kaykit/characters/BlackKnight.glb"
+    },
+    {
+      "source": "references/purchased/KayKit_Mystery_Monthly_Series_5/3 - September 2024 - Black Knight/assets/gltf/BlackKnight_Sword_Large.gltf",
+      "target": "public/assets/kaykit/weapons/BlackKnight_Sword_Large.gltf"
+    },
+    {
+      "source": "references/purchased/KayKit_Mystery_Monthly_Series_5/3 - September 2024 - Black Knight/assets/gltf/BlackKnight_Sword_Large.bin",
+      "target": "public/assets/kaykit/weapons/BlackKnight_Sword_Large.bin"
+    },
+    {
+      "source": "references/purchased/KayKit_Mystery_Monthly_Series_5/3 - September 2024 - Black Knight/assets/gltf/blackknight_texture.png",
+      "target": "public/assets/kaykit/weapons/blackknight_texture.png"
+    },
+    {
+      "source": "references/purchased/KayKit_Dungeon_Pack_1.1_EXTRA/License.txt",
+      "target": "public/assets/furnace/DUNGEON-LICENSE.txt"
+    },
+    {
+      "source": "references/purchased/KayKit_Mystery_Monthly_Series_5/License.txt",
+      "target": "public/assets/furnace/SERIES-5-LICENSE.txt"
+    }
+  ]
+}

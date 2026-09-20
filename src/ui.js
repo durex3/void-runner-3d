@@ -11,6 +11,9 @@ export class GameView{
 
   mount(){
     this.app.innerHTML=SHELL;
+    const levels=document.createElement('fieldset');levels.id='level-select';
+    levels.innerHTML='<legend>选择关卡</legend><label><input type="radio" name="chapter" value="ruins" checked>01 遗迹工坊</label><label><input type="radio" name="chapter" value="furnace">02 熔炉要塞</label>';
+    this.$('#characters').before(levels);
     const status=document.createElement('div');status.id='battle-status';
     const notice=document.createElement('div');notice.id='battle-notice';
     const danger=document.createElement('div');danger.id='danger-notice';danger.setAttribute('role','status');
@@ -28,6 +31,13 @@ export class GameView{
   }
 
   $(selector){return this.app.querySelector(selector)}
+
+  bindLevels(onLevel){this.app.querySelectorAll('[name="chapter"]').forEach(input=>input.onchange=()=>onLevel(input.value))}
+  selectLevel(id){
+    this.$(`[name="chapter"][value="${id}"]`).checked=true;
+    this.$('.wave-readout small').textContent=id==='furnace'?'熔炉要塞':'遗迹工坊';
+    this.elements.start.textContent=id==='furnace'?'进入熔炉 →':'进入遗迹 →';
+  }
 
   bind({onStart,onCharacter,onPause,onSound,onDash,onGuide}){
     this.elements.start.onclick=onStart;
@@ -133,11 +143,19 @@ export class GameView{
     this.app.querySelectorAll('[data-choice]').forEach(button=>button.onclick=()=>onChoose(choices[Number(button.dataset.choice)]));
   }
 
-  showFinish({win,state,garden,best,onRestart,onChangeHero}){
+  showFinish({win,state,garden,best,onRestart,onChangeHero,onNext}){
     this.elements.modal.innerHTML=`<div class="eyebrow">${win?'ZONE SECURED':'SIGNAL LOST'}</div><h2>${win?'遗迹已守住':'行动中止'}</h2><p>${win?'你击败了骸骨巨像，遗迹工坊得以保存。':'试试不同的武器和升级组合，再来一局吧！'}</p><p>抵达第 ${state.wave} 波 · 击败 ${state.kills} · 等级 ${state.level}<br>部署 ${garden.stats.planted} 件 · 装置击杀 ${garden.stats.kills} · 联动触发 ${garden.stats.combos} 次 · 伙伴 ${garden.buddies.length}<br>存活 ${Math.floor(state.time)} 秒 · 最佳 ${best} 击败</p><button id="restart" class="primary">再来一局 →</button><button id="change-hero" class="primary">更换角色</button>`;
     this.elements.modal.classList.remove('hidden');
     this.$('#restart').onclick=onRestart;
     this.$('#change-hero').onclick=onChangeHero;
+    this.$('#change-hero').textContent='选择关卡 / 角色';
+    if(state.chapter==='furnace'){
+      this.$('#modal h2').textContent=win?'熔炉已熄灭':'行动中止';
+      if(win)this.$('#modal p').textContent='黑骑士已被击败，熔炉要塞得以解放。';
+    }else if(win&&onNext){
+      const next=document.createElement('button');next.id='next-level';next.className='primary';next.textContent='第二关 · 全新开局 →';next.onclick=onNext;
+      this.$('#restart').before(next);
+    }
   }
 
   renderStats(stats){
@@ -171,10 +189,11 @@ export class GameView{
   renderHud(state,garden,enemies,stats,devices){
     const warning=garden.effects.some(effect=>effect.stomp);
     const recovering=enemies.some(enemy=>enemy.type==='boss'&&!enemy.dead&&enemy.recovery>0);
-    const message=warning?'巨像践踏 · 危险区域':recovering?'巨像恢复中 · 反击时机':'';
+    const furnaceBoss=enemies.find(e=>e.customBoss&&!e.dead),action=furnaceBoss?.furnaceAction;
+    const message=warning?'巨像践踏 · 危险区域':recovering?'首领收招中 · 反击时机':state.furnaceStatus||(action?.phase==='warning'?(action.kind==='charge'?'冲锋预警 · 侧向避让':'重斩预警 · 绕到背后'):'');
     const danger=this.$('#danger-notice');
     if(danger.textContent!==message)danger.textContent=message;
-    this.$('#battle-notice').classList.toggle('danger-active',warning||recovering);
+    this.$('#battle-notice').classList.toggle('danger-active',!!message);
     this.$('#battle-notice').classList.toggle('recovery-active',recovering&&!warning);
     this.renderDevices(devices);
     this.$('#health').style.width=`${state.hp/state.maxHp*100}%`;
@@ -206,10 +225,11 @@ export class GameView{
     const bossState=this.$('#boss-state');
     const bossStateLabel=this.$('#boss-state-label');
     if(boss){
+      this.$('.boss-name').textContent=boss.customBoss?(boss.hp<=boss.maxHp*.5?'黑骑士 · 双炉阶段':'黑骑士 · 熔炉统领'):'骸骨巨像';
       this.$('#bossbar i').style.width=`${boss.hp/boss.maxHp*100}%`;
       const recovering=boss.recovery>0;
-      const casting=!!boss.rangedWindup&&!recovering;
-      bossStateLabel.textContent=recovering?'恢复中 · 接触安全 · 可反击':casting?'施法中 · 注意弹幕':'';
+      const casting=!!(boss.rangedWindup||boss.furnaceAction)&&!recovering;
+      bossStateLabel.textContent=recovering?'恢复中 · 接触安全 · 可反击':casting?(boss.customBoss?'蓄力中 · 注意预警':'施法中 · 注意弹幕'):'';
       bossState.classList.toggle('is-recovering',recovering);
       bossState.classList.toggle('is-casting',casting);
     }else{
