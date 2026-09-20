@@ -68,7 +68,7 @@ export function createCreature(type){
   mountWeapon(root,({brute:'Skeleton_Blade',runner:'Skeleton_Dagger',spitter:'Skeleton_Staff',boss:'Skeleton_Golem_Axe',necromancer:'Skeleton_Staff'})[type]);return root;
 }
 export function kickActor(actor,rate=1){const r=actor.userData.rig;if(!r||r.dead)return;r.kick=1;if(r.layered){const p=actor.userData.profile;r.attackAction?.stop();r.upperIdle?.stop();r.attackAction=action(r,p.animation,true,'upper');r.attackLeft=p.interval/rate;r.attackAction.timeScale=r.attackAction.getClip().duration/(p.model==='sword_2handed'?p.delay/rate/.52:r.attackLeft);r.attackAction.fadeIn(.045);r.attackClip=p.animation}}
-export function hitActor(actor,strength=.55){const r=actor.userData.rig;if(!r||r.dead||r.hit>0)return;const duration=.16+strength*.14;r.hit=duration;r.hitAction=action(r,r.layered&&actor.userData.profile?.offhand?'Melee_Block_Hit':'Hit_A',true,r.layered?'upper':'full');if(r.hitAction){r.hitAction.time=Math.min(.08,r.hitAction.getClip().duration*.22);r.hitAction.setEffectiveWeight(strength);r.hitAction.fadeOut(duration)}}
+export function hitActor(actor,strength=.55){const r=actor.userData.rig;if(!r||r.dead||r.hit>0)return;const shield=!!(r.layered&&actor.userData.profile?.offhand),duration=shield?.34:.16+strength*.14;r.hit=duration;r.hitAction=action(r,shield?'Melee_Block_Hit':'Hit_A',true,r.layered?'upper':'full');if(r.hitAction){r.hitAction.time=Math.min(shield?.1:.08,r.hitAction.getClip().duration*.22);r.hitAction.setEffectiveWeight(shield?Math.min(1,strength+.25):strength);r.hitAction.fadeIn(.025)}}
 export function dieActor(actor){const r=actor.userData.rig;if(!r||r.dead)return;r.dead=true;r.mixer.stopAllAction();action(r,'Death_A',true)}
 export function resetActor(actor){const r=actor.userData.rig;restore(r);r.dead=false;r.kick=r.hit=r.attackLeft=0;r.mixer.stopAllAction();r.current=null;locomotion(r,'Idle_A');actor.visible=true}
 function disposeRig(r){r.mixer.stopAllAction();r.mixer.uncacheRoot(r.model);const skeletons=new Set();r.model.traverse(o=>{if(o.isSkinnedMesh)skeletons.add(o.skeleton)});for(const skeleton of skeletons)skeleton.dispose()}
@@ -88,7 +88,7 @@ export function animateActor(actor,dt,time,speed=0){
   if(!r.dead){locomotion(r,speed>.05?(speed>2.5?'Running_A':'Walking_A'):'Idle_A');r.base.timeScale=speed>.05?T.MathUtils.clamp(speed/(speed>2.5?5:1.8),.5,2):1}
   r.mixer.update(dt);r.phase+=dt;r.hit=Math.max(0,r.hit-dt);
   if(r.dead)return;
-  if(r.layered){r.attackLeft=Math.max(0,r.attackLeft-dt);if(!r.attackLeft&&r.attackAction){r.attackAction.stop();r.attackAction=null;r.upperIdle=action(r,actor.userData.profile.stance,false,'upper')}return}
+  if(r.layered){r.attackLeft=Math.max(0,r.attackLeft-dt);if(!r.attackLeft&&r.attackAction){r.attackAction.stop();r.attackAction=null;r.upperIdle=action(r,actor.userData.profile.stance,false,'upper')}if(r.hitAction&&!r.hit){r.hitAction.stop();r.hitAction=null}return}
   r.kick=Math.max(0,r.kick-dt*4.5);
   // Only the upper body is layered procedurally; the supplied rig drives the feet.
   const armed=actor.userData.isHero,melee=armed?actor.userData.weapon===3:['brute','runner','boss'].includes(actor.userData.type);
