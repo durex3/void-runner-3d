@@ -195,7 +195,7 @@ export class RelicWorkshopGame{
   }
 
   spawnEnemy(force,elite=false){
-    const type=force||(this.state.wave>2&&Math.random()<.23?'spitter':Math.random()<.3?'runner':'brute');
+    const type=force||(this.state.wave>2&&Math.random()<.27?'spitter':Math.random()<.3?'runner':'brute');
     const angle=Math.random()*Math.PI*2;
     const object=Actors.createCreature(elite&&type==='brute'?'necromancer':type);
     object.position.set(Math.cos(angle)*20,0,Math.sin(angle)*20);
@@ -407,6 +407,12 @@ export class RelicWorkshopGame{
   beginEnemyWindup(enemy,direction,duration){
     const pattern=enemy.type==='boss'&&(enemy.volley||0)%2?'fan':'ring';
     const aim=direction.clone();
+    if(enemy.type==='spitter'){
+      const velocity=this.hero.userData.movementVelocity?.clone().setY(0)||new T.Vector3();
+      if(velocity.lengthSq()>1e-6){velocity.setLength(Math.min(velocity.length()*.42,3));}
+      aim.copy(this.hero.position).add(velocity).sub(enemy.obj.position).setY(0).normalize();
+      enemy.obj.rotation.y=Math.atan2(aim.x,aim.z);
+    }
     if(enemy.type==='boss'&&pattern==='fan'){
       aim.copy(this.hero.position).addScaledVector(this.hero.userData.movementVelocity||new T.Vector3(),.7).sub(enemy.obj.position).setY(0).normalize();
       enemy.obj.rotation.y=Math.atan2(aim.x,aim.z);
