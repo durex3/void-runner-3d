@@ -93,7 +93,7 @@ export class RelicWorkshopGame{
       scene:this.scene,hero:this.hero,state:this.state,enemies:()=>this.enemies,damage:(...args)=>this.damageEnemy(...args),garden:this.garden,
       onFire:(profile,context)=>{Actors.kickActor(this.hero,this.state.rate);this.meleeVfx.beginSwing(this.hero);const direction=new T.Vector3(Math.sin(this.hero.rotation.y),0,Math.cos(this.hero.rotation.y));this.remoteVfx.fire(profile,this.hero.position,direction,context);this.audio.play([600,180,850,240][profile.type],.07,profile.type===1?'sawtooth':'triangle',.018)},
       effect:(object,life)=>this.effects.add(object,life,{fixed:true,cleanup:o=>o.userData.dispose?.()}),
-      onHit:event=>this.remoteVfx.hit(event.profile,event.position,event.kind),
+      onHit:event=>{this.remoteVfx.hit(event.profile,event.position,event.kind);if(event.kind==='nature-area'&&event.profile.slow&&event.affected){const percent=Math.round((1-.55)*100);this.view.showToast(`德鲁伊法杖 · ${event.affected} 个目标减速 ${percent}% · 持续 ${event.profile.slow.toFixed(1)} 秒`,1.5)}},
       onMeleeImpact:event=>{this.meleeVfx.play({...event,actor:this.hero});this.applyMeleeFeedback(event)},
     });
     this.lastFrame=performance.now();

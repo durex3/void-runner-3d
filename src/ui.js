@@ -89,7 +89,7 @@ export class GameView{
 
   renderLoadout(name,slot,onEquip){
     const role=this.heroes[name];
-    this.elements.weapons.innerHTML=role.weapons.map((weapon,index)=>`<button class="weapon ${index===slot?'active':''}" data-weapon="${index}" aria-keyshortcuts="${index+1}" title="${weapon.detail}"><span class="weapon-key">${index+1}</span><span class="weapon-copy"><b>${weapon.label}</b><small class="weapon-detail">${weapon.detail.split(' · ')[0]}</small></span><span class="weapon-status" data-weapon-status="${index}">${index===slot?'可用':'待命'}</span></button>`).join('');
+    this.elements.weapons.innerHTML=role.weapons.map((weapon,index)=>{const detail=weapon.effect==='nature'?'范围冲击 · 减速 45%':weapon.detail.split(' · ')[0];return `<button class="weapon ${index===slot?'active':''}" data-weapon="${index}" aria-keyshortcuts="${index+1}" title="${weapon.detail}"><span class="weapon-key">${index+1}</span><span class="weapon-copy"><b>${weapon.label}</b><small class="weapon-detail">${detail}</small></span><span class="weapon-status" data-weapon-status="${index}">${index===slot?'可用':'待命'}</span></button>`}).join('');
     this.elements.roleDescription.textContent=`${role.label} · ${role.description}。${role.weapons.map(weapon=>weapon.label).join(' / ')}，局内按 ${role.weapons.map((_,index)=>index+1).join(' / ')} 切换。`;
     this.app.querySelectorAll('[data-weapon]').forEach(button=>button.onclick=()=>onEquip(Number(button.dataset.weapon)));
   }

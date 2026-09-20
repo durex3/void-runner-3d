@@ -13,7 +13,7 @@ export class EffectsSystem{
       for(const key of ['glow','hurt','shock'])this.materials[key]=new T.SpriteMaterial({map,color:this.materials[key].color,transparent:true,opacity:.65,depthWrite:false,toneMapped:false});
     });
     this.statusGeometry={
-      slow:new T.RingGeometry(.82,1,48),
+      slow:new T.RingGeometry(.94,1.16,48),
       stagger:new T.OctahedronGeometry(.18,0),
       chargeRing:new T.RingGeometry(.78,.88,40),
       chargeLine:new T.BoxGeometry(.09,.035,1.4),
@@ -23,7 +23,7 @@ export class EffectsSystem{
     this.materials={
       glow:new T.MeshBasicMaterial({color:0xfbc47b}),
       hurt:new T.MeshBasicMaterial({color:0xff866c}),
-      slow:new T.MeshBasicMaterial({color:0x78d9e7,transparent:true,opacity:.72,side:T.DoubleSide,depthWrite:false,toneMapped:false}),
+      slow:new T.MeshBasicMaterial({color:0x7ff4ff,transparent:true,opacity:.9,side:T.DoubleSide,depthWrite:false,toneMapped:false}),
       stagger:new T.MeshBasicMaterial({color:0xd9fff7,transparent:true,opacity:.95,depthWrite:false,toneMapped:false}),
       shock:new T.MeshBasicMaterial({color:0x9ff7ee,toneMapped:false}),
       charge:new T.MeshBasicMaterial({color:0xff765d,transparent:true,opacity:.9,side:T.DoubleSide,depthTest:false,depthWrite:false,toneMapped:false}),
@@ -87,9 +87,10 @@ export class EffectsSystem{
     status.slow.visible=enemy.slow>0;
     status.stagger.visible=enemy.stagger>0;
     if(status.slow.visible){
-      const pulse=1+.07*Math.sin(time*8);
+      const pulse=1+.12*Math.sin(time*8);
       status.slow.scale.setScalar((enemy.size+.45)*pulse);
       status.slow.rotation.z=time*.9;
+      status.slow.material.opacity=.68+.22*(.5+.5*Math.sin(time*8));
     }
     if(status.stagger.visible){
       status.stagger.rotation.y=time*5.5;
