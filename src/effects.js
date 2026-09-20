@@ -18,6 +18,7 @@ export class EffectsSystem{
       chargeRing:new T.RingGeometry(.78,.88,40),
       chargeLine:new T.BoxGeometry(.09,.035,1.4),
       chargeArrow:new T.ConeGeometry(.16,.42,3),
+      shield:new T.SphereGeometry(1,18,10),
     };
     this.materials={
       glow:new T.MeshBasicMaterial({color:0xfbc47b}),
@@ -27,6 +28,7 @@ export class EffectsSystem{
       shock:new T.MeshBasicMaterial({color:0x9ff7ee,toneMapped:false}),
       charge:new T.MeshBasicMaterial({color:0xff765d,transparent:true,opacity:.9,side:T.DoubleSide,depthTest:false,depthWrite:false,toneMapped:false}),
       chargeTip:new T.MeshBasicMaterial({color:0xffebaf,depthTest:false,depthWrite:false,toneMapped:false}),
+      shield:new T.MeshBasicMaterial({color:0x9ff7ee,transparent:true,opacity:.26,wireframe:true,depthWrite:false,toneMapped:false}),
     };
   }
 
@@ -58,12 +60,19 @@ export class EffectsSystem{
     charge.visible=false;group.add(charge);
     const recovery=new T.Mesh(this.statusGeometry.slow,this.materials.stagger);
     recovery.rotation.x=-Math.PI/2;recovery.position.y=.14;recovery.scale.setScalar(enemy.size+.35);recovery.renderOrder=6;recovery.visible=false;group.add(recovery);
-    enemy.statusVfx={group,slow,stagger,charge,chargeRing:ring,recovery};
+    const shield=new T.Mesh(this.statusGeometry.shield,this.materials.shield);
+    shield.position.y=.78;shield.scale.setScalar(enemy.size+.55);shield.renderOrder=5;shield.visible=false;group.add(shield);
+    enemy.statusVfx={group,slow,stagger,charge,chargeRing:ring,recovery,shield};
   }
 
   updateEnemyStatus(enemy,time){
     const status=enemy.statusVfx;if(!status)return;
     status.recovery.visible=enemy.recovery>0&&!enemy.dead;
+    status.shield.visible=status.recovery.visible;
+    if(status.shield.visible){
+      status.shield.rotation.y=time*.8;
+      status.shield.material.opacity=.2+.07*(.5+.5*Math.sin(time*5));
+    }
     status.charge.visible=!!enemy.rangedWindup&&!enemy.dead&&!enemy.stunned;
     if(status.charge.visible){
       const progress=1-Math.max(0,enemy.attack)/enemy.rangedWindup.duration;
