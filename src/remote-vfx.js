@@ -28,7 +28,13 @@ export class RemoteVfx{
     if(style.nature){if(kind==='nature-area'){this.sprite('circle',position.clone().setY(.45),1.1,.16,0xe3ffd0,'ranged-area');this.natureRoots(position,profile.radius);this.natureBloom(position,profile.radius);}return;}
     if(profile.effect==='pierce'){this.bowImpact(position);return;}
     if(style.electric){this.sheet('lightning',position.clone().setY(1.6),2.1,.22,0xa5d8ff,'ranged-chain');return;}
-    if(style.splash){this.atlas(12,position.clone().setY(1),3,.35,0xe0b4ff,'arcane-impact',7);return;}
+    if(style.splash){
+      if(kind==='splash'){
+        this.ground('circle',position.clone().setY(.05),1.05,.34,0xdcaaff,'arcane-splash');
+        this.atlas(12,position.clone().setY(1),2.15,.3,0xf0c8ff,'arcane-splash-hit',7);
+      }else this.atlas(12,position.clone().setY(1),3,.35,0xe0b4ff,'arcane-impact',7);
+      return;
+    }
     if(style.dust){const close=kind==='shotgun-close';this.sheet('explosion',position.clone().setY(1),close?2.45:1.8,close?.42:.34,style.hitColor,'ranged-hit');if(close)this.ground('circle',position.clone().setY(.05),1.15,.3,0xffd28a,'shotgun-blast');return;}
     this.atlas(profile.effect==='pierce'?6:7,position.clone().setY(1),profile.effect==='pierce'?1.65:profile.effect==='mobile'?1.35:2.4,profile.effect==='mobile'?.14:profile.effect==='pierce'?.16:.25,profile.effect==='mobile'?0x92ffc1:style.hitColor,'ranged-hit',profile.effect==='pierce'?6:5);
   }
