@@ -127,7 +127,7 @@ export class GameView{
   }
 
   showUpgrade(state,choices,onChoose){
-    this.elements.modal.innerHTML=`<div class="eyebrow">FIELD MODIFICATION</div><h2>遗迹祝福</h2><p>等级 ${state.level} · 选择一种力量，继续你的旅程</p><div id="choices">${choices.map((choice,index)=>`<button class="card" data-choice="${index}"><small>BLESSING / 0${index+1}</small><div class="symbol">${choice.symbol}</div><h3>${choice.name}</h3><p>${choice.desc}</p></button>`).join('')}</div>`;
+    this.elements.modal.innerHTML=`<div class="eyebrow">FIELD MODIFICATION</div><h2>遗迹祝福</h2><p>等级 ${state.level} · 选择一种力量，继续你的旅程</p><div id="choices">${choices.map((choice,index)=>`<button class="card ${choice.recommended?'recommended':''}" data-choice="${index}"><small>BLESSING / 0${index+1}${choice.recommended?' · 推荐':''}</small><div class="symbol">${choice.symbol}</div><h3>${choice.name}</h3><p>${choice.desc}</p>${choice.hint?`<span class="card-hint">${choice.hint}</span>`:''}</button>`).join('')}</div>`;
     this.elements.modal.classList.remove('hidden');
     this.app.querySelectorAll('[data-choice]').forEach(button=>button.onclick=()=>onChoose(choices[Number(button.dataset.choice)]));
   }
