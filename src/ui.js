@@ -134,7 +134,7 @@ export class GameView{
   }
 
   showFinish({win,state,garden,best,onRestart,onChangeHero}){
-    this.elements.modal.innerHTML=`<div class="eyebrow">${win?'ZONE SECURED':'SIGNAL LOST'}</div><h2>${win?'遗迹已守住':'行动中止'}</h2><p>${win?'你击败了骸骨巨像，遗迹工坊得以保存。':'试试不同的武器和升级组合，再来一局吧！'}</p><p>抵达第 ${state.wave} 波 · 击败 ${state.kills} · 等级 ${state.level}<br>部署 ${garden.stats.planted} 件 · 装置击杀 ${garden.stats.kills} · 伙伴 ${garden.buddies.length}<br>存活 ${Math.floor(state.time)} 秒 · 最佳 ${best} 击败</p><button id="restart" class="primary">再来一局 →</button><button id="change-hero" class="primary">更换角色</button>`;
+    this.elements.modal.innerHTML=`<div class="eyebrow">${win?'ZONE SECURED':'SIGNAL LOST'}</div><h2>${win?'遗迹已守住':'行动中止'}</h2><p>${win?'你击败了骸骨巨像，遗迹工坊得以保存。':'试试不同的武器和升级组合，再来一局吧！'}</p><p>抵达第 ${state.wave} 波 · 击败 ${state.kills} · 等级 ${state.level}<br>部署 ${garden.stats.planted} 件 · 装置击杀 ${garden.stats.kills} · 联动触发 ${garden.stats.combos} 次 · 伙伴 ${garden.buddies.length}<br>存活 ${Math.floor(state.time)} 秒 · 最佳 ${best} 击败</p><button id="restart" class="primary">再来一局 →</button><button id="change-hero" class="primary">更换角色</button>`;
     this.elements.modal.classList.remove('hidden');
     this.$('#restart').onclick=onRestart;
     this.$('#change-hero').onclick=onChangeHero;
