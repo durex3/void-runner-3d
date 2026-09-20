@@ -2,7 +2,7 @@
 export const HEROES={
   Knight:{label:'骑士',description:'剑盾防守、重剑清场与钉锤打断',weapons:[
     {label:'守卫剑盾',model:'sword_1handed',offhand:'shield_round',type:3,damage:38,interval:.62,range:3.2,arc:120,delay:.18,damageTaken:.8,grip:'melee',effect:'melee',animation:'Melee_1H_Attack_Slice_Diagonal',stance:'Melee_Blocking',detail:'正面挥砍 · 持盾受伤减少 20%'},
-    {label:'骑士双手剑',model:'sword_2handed',type:3,damage:70,interval:1.05,range:3.8,arc:160,delay:.4,knock:5,grip:'melee',effect:'melee',animation:'Melee_2H_Attack_Chop',stance:'Melee_2H_Idle',detail:'大范围重斩 · 前摇 0.4 秒 / 击退'},
+    {label:'骑士双手剑',model:'sword_2handed',type:3,damage:70,interval:1.05,range:3.8,arc:160,delay:.4,knock:10,grip:'melee',effect:'melee',animation:'Melee_2H_Attack_Chop',stance:'Melee_2H_Idle',detail:'大范围重斩 · 前摇 0.4 秒 / 明显击退'},
     {label:'震击钉锤',model:'Skeleton_Mace',type:3,damage:52,interval:.9,range:2.6,arc:90,delay:.25,stagger:.45,grip:'melee',effect:'melee',animation:'Melee_1H_Attack_Chop',stance:'Idle_A',detail:'短程震击 · 普通敌人硬直 0.45 秒'}]},
   Ranger:{label:'游侠',description:'弩箭连射与重箭点杀',weapons:[
     {label:'复合弩',model:'crossbow_2handed',type:0,damage:30,interval:.36,speed:26,life:1,count:1,grip:'twoHand',effect:'bolt',detail:'稳定单发 · 30 伤害 / 0.36 秒'},

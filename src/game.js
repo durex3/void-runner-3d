@@ -94,7 +94,7 @@ export class RelicWorkshopGame{
       onFire:(profile,context)=>{Actors.kickActor(this.hero,this.state.rate);this.meleeVfx.beginSwing(this.hero);const direction=new T.Vector3(Math.sin(this.hero.rotation.y),0,Math.cos(this.hero.rotation.y));this.remoteVfx.fire(profile,this.hero.position,direction,context);this.audio.play([600,180,850,240][profile.type],.07,profile.type===1?'sawtooth':'triangle',.018)},
       effect:(object,life)=>this.effects.add(object,life,{fixed:true,cleanup:o=>o.userData.dispose?.()}),
       onHit:event=>{this.remoteVfx.hit(event.profile,event.position,event.kind);if(event.kind==='nature-area'&&event.profile.slow&&event.affected){const percent=Math.round((1-.55)*100);this.view.showToast(`德鲁伊法杖 · ${event.affected} 个目标减速 ${percent}% · 持续 ${event.profile.slow.toFixed(1)} 秒`,1.5)}},
-      onMeleeImpact:event=>{this.meleeVfx.play({...event,actor:this.hero});this.applyMeleeFeedback(event)},
+      onMeleeImpact:event=>{this.meleeVfx.play({...event,actor:this.hero});this.applyMeleeFeedback(event);if(event.profile.knock&&event.targets.length)this.view.showToast(`双手剑 · ${event.targets.length} 个目标被击退`,1.1)},
     });
     this.lastFrame=performance.now();
     this.uiElapsed=0;
@@ -374,8 +374,9 @@ export class RelicWorkshopGame{
       enemy.slow=Math.max(0,(enemy.slow||0)-dt);
       this.effects.updateEnemyStatus(enemy,this.state.time);
       const delta=this.hero.position.clone().sub(enemy.obj.position),distance=delta.length();delta.normalize();
-      const speed=enemy.speed*(enemy.slow>0?.55:1);
-      if(!enemy.rangedWindup&&(enemy.type!=='spitter'||distance>8))enemy.obj.position.addScaledVector(delta,speed*dt);
+      const beingPushed=!!enemy.push;
+      const speed=beingPushed?0:enemy.speed*(enemy.slow>0?.55:1);
+      if(!beingPushed&&!enemy.rangedWindup&&(enemy.type!=='spitter'||distance>8))enemy.obj.position.addScaledVector(delta,speed*dt);
       const facing=enemy.rangedWindup?.direction||delta;
       enemy.obj.rotation.y=Math.atan2(facing.x,facing.z);
       Actors.animateActor(enemy.obj,dt,this.state.time,!enemy.rangedWindup&&(enemy.type!=='spitter'||distance>8)?speed:0);
