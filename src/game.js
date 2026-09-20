@@ -269,7 +269,7 @@ export class RelicWorkshopGame{
   hurt(amount){
     if(this.state.inv>0)return;
     const reduction=this.hero.userData.profile.damageTaken||1;
-    if(reduction<1){this.showMechanicOnce('knight-shield','守卫剑盾 · 受到伤害减少 20%');this.effects.guardFlash(this.hero.position)}
+    if(reduction<1){this.showMechanicOnce('knight-shield','守卫剑盾 · 受到伤害减少 20%');const facing=new T.Vector3(Math.sin(this.hero.rotation.y),0,Math.cos(this.hero.rotation.y));this.effects.guardFlash(this.hero.position,facing)}
     amount*=reduction;
     this.state.hp=Math.max(0,this.state.hp-amount);
     Actors.hitActor(this.hero);

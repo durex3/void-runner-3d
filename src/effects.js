@@ -118,11 +118,12 @@ export class EffectsSystem{
     }
   }
 
-  guardFlash(position){
-    const geometry=new T.RingGeometry(.58,.9,40),material=new T.MeshBasicMaterial({color:0xb9f7ff,transparent:true,opacity:.95,side:T.DoubleSide,depthWrite:false,toneMapped:false,blending:T.AdditiveBlending});
-    const ring=new T.Mesh(geometry,material);ring.position.copy(position).setY(.06);ring.rotation.x=-Math.PI/2;ring.userData.remoteVfx='guard-flash';
-    const added=this.add(ring,.28,{fixed:true,update:({progress})=>{const eased=1-(1-progress)**2;ring.scale.setScalar(.78+eased*.9);material.opacity=.95*(1-progress)**1.8},cleanup:()=>{geometry.dispose();material.dispose()}});
-    if(!added){geometry.dispose();material.dispose()}
+  guardFlash(position,direction=new T.Vector3(0,0,1)){
+    const floorGeometry=new T.RingGeometry(.58,.9,40),shieldGeometry=new T.CircleGeometry(.62,28),floorMaterial=new T.MeshBasicMaterial({color:0xb9f7ff,transparent:true,opacity:.95,side:T.DoubleSide,depthWrite:false,toneMapped:false,blending:T.AdditiveBlending}),shieldMaterial=new T.MeshBasicMaterial({color:0xb9f7ff,transparent:true,opacity:.8,side:T.DoubleSide,depthWrite:false,toneMapped:false,blending:T.AdditiveBlending});
+    const group=new T.Group(),floor=new T.Mesh(floorGeometry,floorMaterial),shield=new T.Mesh(shieldGeometry,shieldMaterial),facing=direction.clone().setY(0).normalize();
+    floor.rotation.x=-Math.PI/2;floor.position.y=-.82;shield.position.set(0,0,.38);group.add(floor,shield);group.position.copy(position).setY(.86);group.rotation.y=Math.atan2(facing.x,facing.z);group.userData.remoteVfx='guard-flash';
+    const added=this.add(group,.34,{fixed:true,update:({progress})=>{const eased=1-(1-progress)**2;group.scale.setScalar(.72+eased*.52);floorMaterial.opacity=.95*(1-progress)**1.8;shieldMaterial.opacity=.82*(1-progress)**1.5;shield.rotation.z=progress*.35},cleanup:()=>{floorGeometry.dispose();shieldGeometry.dispose();floorMaterial.dispose();shieldMaterial.dispose()}});
+    if(!added){floorGeometry.dispose();shieldGeometry.dispose();floorMaterial.dispose();shieldMaterial.dispose()}
   }
 
   addCorpse(object,life=1.6){this.corpses.push({obj:object,life})}
