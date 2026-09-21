@@ -1,5 +1,7 @@
 # 美术来源与许可
 
+2026-09-22 补充：黑骑士召唤姿态为现有 KayKit 双手持握动画之上的程序化骨骼叠加，重斩重新分段采样官方下劈动作。圆形地火与炉栅使用已有 CraftPix 素材包的 `7 Fire wall/Fire-wall.png`，十帧原图未修改，沿用 CraftPix 许可而非 CC0，见 `public/assets/effects/purchased/spells/forge-manifest.json`。第二关小怪沿用 KayKit 圆盾、短刃、法杖与模型，配色为实例材质处理。无新增采购。
+
 核对日期：2026-09-21。当前采用 KayKit 角色与道具、Kenney 树岩、外部特效贴图及项目程序化美术。用户原始资源保持不变，运行副本位于 `public/assets/`。
 
 ## KayKit

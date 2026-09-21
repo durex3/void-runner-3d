@@ -1,9 +1,11 @@
 import * as T from 'three';
 import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
 import {VENTS,insideVent} from './levels.js';
+import {createForgeFlames,preloadForgeFlames} from './furnace-vfx.js';
 
 const NAMES=['floor_tile_large','floor_tile_big_grate','wall','wall_arched','pillar','scaffold_frame_large','banner_red','rocks','torch_mounted'];
 export async function createFurnaceWorld(scene){
+  await preloadForgeFlames();
   const loader=new GLTFLoader(),models=new Map();
   for(const name of NAMES){
     const data=await loader.loadAsync(`/assets/furnace/dungeon/${name}.gltf`);
@@ -68,12 +70,14 @@ export async function createFurnaceWorld(scene){
       stripes.add(stripe);
     }
     group.add(stripes);
-    const flames=new T.InstancedMesh(new T.ConeGeometry(.19,.9,5),new T.MeshBasicMaterial({color:0xff7b38}),16);
+    const flames=createForgeFlames(Array.from({length:16},(_,i)=>{
+      const long=-7+(i%8)*2,short=i<8?-.9:.9;
+      return v.width>v.depth?[long,short]:[short,long];
+    }));
     group.add(flames);group.visible=false;
     return {group,panel,outline,stripes,flames,vent:v};
   });
   scene.add(root);
-  const dummy=new T.Object3D();
   return {root,update(cycle,time){
     vents.forEach((v,index)=>{
       const active=cycle.active.includes(index),burn=cycle.phase==='burn';v.group.visible=active;
@@ -81,14 +85,7 @@ export async function createFurnaceWorld(scene){
       v.panel.material.color.setHex(burn?0xef4e2d:0xffc761);
       v.panel.material.opacity=burn?.32:.12+.1*(1+Math.sin(time*7));
       v.stripes.visible=!burn;v.flames.visible=burn;
-      if(burn){
-        for(let i=0;i<16;i++){
-          const long=-7+(i%8)*2,short=i<8?-.9:.9;
-          dummy.position.set(v.vent.width>v.vent.depth?long:short,.35,v.vent.width>v.vent.depth?short:long);
-          dummy.scale.set(1,.65+.4*Math.sin(time*9+i*2),1);dummy.updateMatrix();v.flames.setMatrixAt(i,dummy.matrix);
-        }
-        v.flames.instanceMatrix.needsUpdate=true;
-      }
+      if(burn)v.flames.userData.update(2.2-cycle.left);
     });
   }};
 }

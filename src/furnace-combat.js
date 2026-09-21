@@ -1,5 +1,6 @@
 import * as T from 'three';
 import * as Actors from './actors.js';
+import {createForgeFlames} from './furnace-vfx.js';
 
 export const FORGE_TARGET={radius:3,warning:2.4,burn:2.2,damage:28};
 
@@ -20,14 +21,17 @@ export class FurnaceCombat{
   cancel(enemy){
     const attack=this.attacks.get(enemy);
     if(attack?.warning){attack.warning.removeFromParent();attack.warning.geometry.dispose();attack.warning.material.dispose()}
-    if(attack?.ground)attack.ground.traverse(obj=>{if(obj.isMesh){obj.geometry.dispose();obj.material.dispose();if(obj.isInstancedMesh)obj.dispose()}});
+    if(attack?.ground)attack.ground.traverse(obj=>{if(obj.isSprite)obj.material.dispose();else if(obj.isMesh){obj.geometry.dispose();obj.material.dispose();if(obj.isInstancedMesh)obj.dispose()}});
     attack?.ground?.removeFromParent();
     this.attacks.delete(enemy);enemy.furnaceAction=null;enemy.recovery=0;
+    Actors.clearEnemyPresentation(enemy.obj);
+    if(enemy.obj.userData.rig)enemy.obj.userData.rig.forgeAge=null;
   }
   recover(enemy,attack){
     attack.phase='recovery';attack.left=enemy.type==='boss'?(attack.kind==='slash'?1.8:2.4):1.3;
     enemy.recovery=attack.left;attack.warning.visible=false;
     if(attack.ground)attack.ground.visible=false;
+    if(enemy.obj.userData.rig)enemy.obj.userData.rig.forgeAge=null;
     if(enemy.type==='boss'){
       this.game.furnaceCycle.suppress();
       this.game.clearObjects(this.game.hazards);
@@ -48,6 +52,8 @@ export class FurnaceCombat{
     const attack={kind,phase:kind==='forge'?'forge':'warning',left:kind==='forge'?.9:boss?(strike===2?.9:1.2):.95,direction,origin,length,warning,hit:false,
       strike,strikes:strikes??(boss&&kind==='slash'&&enemy.hp<=enemy.maxHp*.5?2:1)};
     this.attacks.set(enemy,attack);enemy.furnaceAction=attack;
+    attack.warningDuration=attack.left;
+    Actors.setEnemyPresentation(enemy.obj,attack,boss);
     if(boss&&kind==='forge'){
       const ground=new T.Group(),radius=FORGE_TARGET.radius;
       const material=opacity=>new T.MeshBasicMaterial({color:0xffb953,transparent:true,opacity,depthWrite:false,side:T.DoubleSide});
@@ -55,10 +61,13 @@ export class FurnaceCombat{
       const fill=new T.Mesh(new T.CircleGeometry(radius,64),material(.2));
       rim.rotation.x=fill.rotation.x=-Math.PI/2;fill.position.y=.005;
       ground.add(rim,fill);ground.position.copy(this.game.hero.position).setY(.09);
-      const flames=new T.InstancedMesh(new T.ConeGeometry(.19,.9,5),new T.MeshBasicMaterial({color:0xff7b38}),8);
+      const flames=createForgeFlames(Array.from({length:13},(_,i)=>{
+        const angle=i*2.399,r=i===0?0:i<5?1:2.25;return [Math.cos(angle)*r,Math.sin(angle)*r];
+      }));
       flames.visible=false;ground.add(flames);
       this.game.scene.add(ground);
-      Object.assign(attack,{ground,groundFill:fill,groundFlames:flames,groundDummy:new T.Object3D(),groundAge:0,groundHit:false});
+      Object.assign(attack,{ground,groundFill:fill,groundFlames:flames,groundAge:0,groundHit:false});
+      if(enemy.obj.userData.rig)enemy.obj.userData.rig.forgeAge=0;
     }
     enemy.obj.rotation.y=Math.atan2(direction.x,direction.z);
     if(boss){
@@ -106,7 +115,7 @@ export class FurnaceCombat{
       if(attack.left<=0){
         attack.phase='attack';attack.left=attack.kind==='slash'?.35:.6;
         attack.warning.material.color.setHex(0xff553d);attack.warning.material.opacity=.6;
-        if(boss)Actors.playEnemyAttack(enemy.obj,attack.kind==='slash'?'Melee_2H_Attack_Chop':'Melee_2H_Attack_Stab',attack.left);
+        if(boss){if(attack.kind!=='slash')Actors.playEnemyAttack(enemy.obj,'Melee_2H_Attack_Stab',attack.left)}
         else Actors.kickActor(enemy.obj);
         if(attack.kind==='slash'&&inSlash(game.hero.position,attack.origin,attack.direction)){game.hurt(24);attack.hit=true}
       }
@@ -125,21 +134,13 @@ export class FurnaceCombat{
     }else if(attack.phase==='forge'){
       attack.warning.rotation.z+=dt;
       attack.groundAge+=dt;
+      if(enemy.obj.userData.rig)enemy.obj.userData.rig.forgeAge=attack.groundAge;
       const burning=attack.groundAge>=FORGE_TARGET.warning;
       attack.ground.visible=attack.groundAge<FORGE_TARGET.warning+FORGE_TARGET.burn;
       attack.groundFill.material.color.setHex(burning?0xff553d:0xffb953);
-      attack.groundFill.material.opacity=burning?.5:.15+.15*attack.groundAge/FORGE_TARGET.warning;
+      attack.groundFill.material.opacity=burning?.28:.15+.15*attack.groundAge/FORGE_TARGET.warning;
       attack.groundFlames.visible=burning;
-      if(burning){
-        const dummy=attack.groundDummy;
-        for(let i=0;i<8;i++){
-          const angle=i*Math.PI/4;
-          dummy.position.set(Math.cos(angle)*2,.35,Math.sin(angle)*2);
-          dummy.scale.set(1,.65+.4*Math.sin(game.state.time*9+i*2),1);dummy.updateMatrix();
-          attack.groundFlames.setMatrixAt(i,dummy.matrix);
-        }
-        attack.groundFlames.instanceMatrix.needsUpdate=true;
-      }
+      if(burning)attack.groundFlames.userData.update(attack.groundAge-FORGE_TARGET.warning);
       // The target stays at cast-start position; each cast can hurt only once.
       if(burning&&attack.ground.visible&&!attack.groundHit&&
         Math.hypot(game.hero.position.x-attack.ground.position.x,game.hero.position.z-attack.ground.position.z)<=FORGE_TARGET.radius){

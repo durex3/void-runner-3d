@@ -229,6 +229,7 @@ export class RelicWorkshopGame{
     const type=force||(furnace?pool[Math.floor(Math.random()*pool.length)]:(this.state.wave>2&&Math.random()<.27?'spitter':Math.random()<.3?'runner':'brute'));
     const angle=Math.random()*Math.PI*2;
     const object=Actors.createCreature(furnace&&type==='boss'?'blackknight':elite&&type==='brute'?'necromancer':type);
+    if(furnace&&type!=='boss')Actors.styleFurnaceCreature(object,type);
     object.position.set(Math.cos(angle)*20,0,Math.sin(angle)*20);
     this.scene.add(object);
     const size=type==='boss'?2.1:type==='runner'?.6:.85;

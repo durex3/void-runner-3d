@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "assets": [{
+    "id": "furnace-ground-fire",
+    "role": "Ground-anchored fire inside existing circular and rectangular hazards",
+    "path": "public/assets/effects/purchased/spells/fire-wall.png",
+    "status": "integrated-awaiting-player-review",
+    "technical": {"dimensions": "720x72", "alpha": true, "anchor": "bottom-center", "frames": 10, "frame_size": "72x72", "filtering": "nearest", "fps": 14},
+    "visual_locks": ["existing hazard boundary", "no damage during warning", "fixed ground anchor"],
+    "source": {
+      "kind": "existing-licensed-pack",
+      "url_or_tool": "https://free-game-assets.itch.io/pixel-art-magic-sprite-sheet-effects",
+      "creator": "CraftPix",
+      "license": "https://craftpix.net/file-licenses/",
+      "prompt_or_source_record": "references/purchased/10-magic-sprite-sheet-effects-pixel-art/7 Fire wall/Fire-wall.png",
+      "license_record": "references/purchased/10-magic-sprite-sheet-effects-pixel-art/License.txt",
+      "edits": "Unmodified copy; runtime atlas UV animation, scale and opacity only"
+    },
+    "verification": {"native_scale_reviewed": true, "in_engine_reviewed": true, "technical_checks_passed": true, "approved_by": "Player approval pending"}
+  }]
+}
