@@ -15,6 +15,18 @@ test('companions collect, heal, and friendship multiplies nearby plant damage',(
 test('boss warning waits before damaging player and destroying plants',()=>{const {garden,hero}=setup();const p=garden.plant(0,hero.position);let damage=0;garden.stomp(hero.position);garden.step(.8,[],d=>damage+=d);assert.equal(damage,0);assert.equal(p.dead,false);garden.step(.81,[],d=>damage+=d);assert.equal(damage,28);assert.equal(p.dead,true);assert.equal(garden.stats.destroyed,1)});
 test('caps, expiration and restart keep garden objects bounded',()=>{const {garden,hero,scene}=setup();for(let i=0;i<60;i++){garden.plant(i%3,hero.position);garden.seed(i%3,new T.Vector3(15,0,0))}assert.equal(garden.plants.length,24);assert.equal(garden.seeds.length,36);garden.combos.add(COMBO_ID());garden.reset();assert.equal(scene.children.length,1);assert.equal(garden.plants.length,0);assert.equal(garden.combos.size,0)});
 function COMBO_ID(){return COMBOS[0].id}
+test('device feedback fires only for attacks and snapshots their real endpoints',()=>{
+  for(const [type,kind,damage] of [[0,'thorn',17],[1,'blast',48],[2,'electric',15]]){
+    const {garden,hero,enemy}=setup(),events=[];garden.onAttack=event=>events.push(event);
+    const e=enemy(),p=garden.plant(type,hero.position);
+    garden.step(.1,[],()=>{});assert.equal(events.length,0);
+    garden.step(1.1,[],()=>{});assert.equal(e.hp,300-damage);
+    assert.deepEqual(events.map(e=>e.kind),type===1?['explosion','blast']:[kind]);
+    const hit=events.at(-1);assert.equal(hit.origin.x,p.obj.position.x);assert.equal(hit.target.x,2);
+    e.obj.position.x=99;assert.equal(hit.target.x,2);
+    const count=events.length;garden.step(.1,[],()=>{});assert.equal(events.length,count);
+  }
+});
 test('boss ground target predicts walking, caps lead and arena, and does not lead melee',()=>{const {hero,enemy}=setup();const boss=enemy(0);boss.obj.position.z=-10;hero.userData.movementVelocity=new T.Vector3(6,0,0);assert.ok(Math.abs(bossGroundTarget(hero,boss).x-7.8)<1e-9);hero.userData.movementVelocity.set(100,0,0);assert.equal(bossGroundTarget(hero,boss).x,10);hero.position.x=18;assert.equal(bossGroundTarget(hero,boss).length(),19);hero.position.copy(boss.obj.position).add(new T.Vector3(0,0,3));assert.deepEqual(bossGroundTarget(hero,boss).toArray(),hero.position.toArray());assert.equal(bossShotAngles('fan').length,5);assert.equal(bossShotAngles('ring').length,10)});
 test('resolved boss stomp opens recovery exactly once; cancellation never does',()=>{for(const cancel of [false,true]){const {garden,hero,enemy}=setup();const boss=enemy(20);let recoveries=0;garden.onBossRecovery=source=>{assert.equal(source,boss);recoveries++};garden.stomp(hero.position,boss);if(cancel)boss.dead=true;garden.step(1.61,[],()=>{});garden.step(.1,[],()=>{});assert.equal(recoveries,cancel?0:1);assert.equal(boss.recovery,cancel?undefined:BOSS_RECOVERY)}});
 test('stomp boundary stays fixed while the countdown contracts',()=>{const {garden,hero}=setup();garden.stomp(hero.position);const warning=garden.effects.at(-1),clock=warning.obj.children.at(-1);assert.equal(warning.obj.scale.x,4);assert.equal(clock.scale.x,1);garden.step(.8,[],()=>{});assert.equal(warning.obj.scale.x,4);assert.ok(Math.abs(clock.scale.x-.575)<.001);});

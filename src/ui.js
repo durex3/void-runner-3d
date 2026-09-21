@@ -230,6 +230,7 @@ export class GameView{
       const recovering=boss.recovery>0;
       const casting=!!(boss.rangedWindup||boss.furnaceAction)&&!recovering;
       bossStateLabel.textContent=recovering?'恢复中 · 接触安全 · 可反击':casting?(boss.customBoss?'蓄力中 · 注意预警':'施法中 · 注意弹幕'):'';
+      if(!recovering&&boss.furnaceAction?.kind==='slash'&&boss.furnaceAction.strikes===2)bossStateLabel.textContent=`连斩 ${boss.furnaceAction.strike}/2 · ${boss.furnaceAction.phase==='warning'?'蓄力中':'挥斩中'}`;
       bossState.classList.toggle('is-recovering',recovering);
       bossState.classList.toggle('is-casting',casting);
     }else{

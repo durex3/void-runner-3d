@@ -1,2 +1,2 @@
 import {defineConfig} from 'vite';
-export default defineConfig({build:{rollupOptions:{output:{onlyExplicitManualChunks:true,manualChunks(id){if(id.includes('three/examples/'))return 'three-addons';if(id.includes('three/'))return 'three';}}}},server:{strictPort:true}});
+export default defineConfig({build:{rollupOptions:{input:{main:'index.html',bossTest:'boss-test.html'},output:{onlyExplicitManualChunks:true,manualChunks(id){if(id.includes('three/examples/'))return 'three-addons';if(id.includes('three/'))return 'three';}}}},server:{strictPort:true}});

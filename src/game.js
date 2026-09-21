@@ -99,7 +99,7 @@ export class RelicWorkshopGame{
     this.effects=new EffectsSystem({scene:this.scene,animateActor:Actors.animateActor,disposeActor:Actors.disposeActor});
     this.meleeVfx=new MeleeVfx({effects:this.effects,camera:this.camera});
     this.remoteVfx=new RemoteVfx({effects:this.effects});
-    this.garden=new Garden({scene:this.scene,hero:this.hero,state:this.state,enemies:()=>this.enemies,damage:(...args)=>this.damageEnemy(...args),toast:message=>this.view.showToast(message),burst:(...args)=>this.effects.burst(...args),onBossRecovery:boss=>{
+    this.garden=new Garden({scene:this.scene,hero:this.hero,state:this.state,enemies:()=>this.enemies,damage:(...args)=>this.damageEnemy(...args),toast:message=>this.view.showToast(message),burst:(...args)=>this.effects.burst(...args),onAttack:event=>this.effects.deviceAttack(event),onBossRecovery:boss=>{
       this.hazards=this.hazards.filter(h=>{if(h.source!==boss)return true;this.scene.remove(h.obj);h.obj.userData.dispose?.();return false});
       this.effects.updateEnemyStatus(boss,this.state.time);
     }});
@@ -256,7 +256,7 @@ export class RelicWorkshopGame{
     if(enemy.dead||enemy.stunned)return;
     enemy.hp-=damage;
     const reaction=MELEE_FEEDBACK[source.model]?.reaction??.55;
-    Actors.hitActor(enemy.obj,reaction);
+    if(!(enemy.customBoss&&enemy.furnaceAction))Actors.hitActor(enemy.obj,reaction);
     this.effects.burst(enemy.obj.position,0xfbc47b,3);
     if(enemy.elite&&enemy.hp<=enemy.maxHp*.3){this.furnaceCombat.cancel(enemy);enemy.hp=Math.max(1,enemy.hp);enemy.stunned=true;enemy.rangedWindup=null;this.effects.updateEnemyStatus(enemy,this.state.time);this.pendingElite=enemy;return}
     if(enemy.hp>0)return;
@@ -291,7 +291,8 @@ export class RelicWorkshopGame{
     const feedback=MELEE_FEEDBACK[profile.model];
     if(!feedback||!targets.length)return false;
     this.heroHitStop=Math.max(this.heroHitStop,feedback.freeze);
-    for(const enemy of targets)enemy.hitStop=Math.max(enemy.hitStop||0,feedback.freeze*(enemy.type==='boss'?.55:1));
+    if(profile.stagger)for(const enemy of targets)if(!enemy.dead&&enemy.customBoss&&enemy.furnaceAction)this.effects.resistImpact(enemy);
+    for(const enemy of targets)if(!(enemy.customBoss&&enemy.furnaceAction))enemy.hitStop=Math.max(enemy.hitStop||0,feedback.freeze*(enemy.type==='boss'?.55:1));
     const shake=this.reducedMotion?0:feedback.shake*Math.min(1.35,.9+targets.length*.08);
     this.cameraKick=Math.max(this.cameraKick,shake);
     this.cameraKickDuration=.14+feedback.freeze;
@@ -373,6 +374,7 @@ export class RelicWorkshopGame{
       if(this.state.wave<8||boss?.furnaceAction?.phase==='forge')this.furnaceCycle.step(dt,this.state.wave);
       else this.furnaceCycle.suppress();
       this.state.furnaceStatus=this.furnaceCycle.phase==='warning'?'地火预警 · 离开炉栅':this.furnaceCycle.phase==='burn'?'炉栅喷火 · 绕行石板':'';
+      if(boss?.furnaceAction?.ground?.visible)this.state.furnaceStatus=this.furnaceCycle.phase==='warning'?'地火预警 · 炉栅与锁定圆圈':'地火燃烧 · 炉栅与锁定圆圈';
       this.furnaceWorld.update(this.furnaceCycle,this.state.time);
       if(this.furnaceCycle.hits(this.hero.position))this.hurt(10);
     }

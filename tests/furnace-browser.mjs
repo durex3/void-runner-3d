@@ -62,7 +62,7 @@ try{
     g.hero.position.copy(e.obj.position);for(let i=0;i<20;i++)g.tick(.04);
     return {phase,left,hpAfter:g.state.hp,hp,stomps:g.garden.effects.filter(f=>f.stomp).length,fire:g.furnaceCycle.phase};
   });
-  assert.equal(recovery.phase,'recovery');assert.ok(recovery.left>2);assert.equal(recovery.hpAfter,recovery.hp);assert.equal(recovery.stomps,0);assert.equal(recovery.fire,'cool');
+  assert.equal(recovery.phase,'recovery');assert.ok(recovery.left>1.6&&recovery.left<=1.8);assert.equal(recovery.hpAfter,recovery.hp);assert.equal(recovery.stomps,0);assert.equal(recovery.fire,'cool');
   const charge=await page.evaluate(()=>{
     const g=window.__game,e=g.enemies.find(e=>e.customBoss);g.furnaceCombat.cancel(e);e.obj.position.set(-6,0,-6);g.hero.position.set(6,0,6);
     g.furnaceCombat.begin(e,'charge');const dir=e.furnaceAction.direction.clone();g.hero.position.set(-9,0,8);
@@ -125,6 +125,32 @@ try{
     g.hero.position.copy(original);g.render();return visible;
   }),'hero stays framed at all eight mobile arena edges');
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
+  const maceControl=await page.evaluate(()=>{
+    const g=window.__game,e=g.enemies.find(e=>e.customBoss),profile=g.actors.HEROES.Knight.weapons[2];
+    g.furnaceCombat.cancel(e);e.obj.position.set(0,0,0);g.hero.position.set(0,0,10);
+    e.hp=e.maxHp=100000;g.state.inv=100;g.state.shot=999;g.state.remaining=999;g.state.spawn=999;
+    const strike=()=>{
+      g.hero.position.copy(e.obj.position).add(new g.THREE.Vector3(0,0,2));
+      g.combat.melee({profile,damage:profile.damage,dir:new g.THREE.Vector3(0,0,-1)});
+    };
+    e.attack=99;e.slow=0;e.hitStop=0;strike();
+    for(let i=0;i<20;i++)g.tick(.01);
+    const cleared=e.stagger===0&&!e.statusVfx.stagger.visible;
+    e.obj.position.set(0,0,0);g.hero.position.set(0,0,10);g.furnaceCombat.begin(e,'charge');
+    // Stress with a hit every frame, above real attack speed: action clock must still finish.
+    let hidden=true;
+    for(let i=0;i<190;i++){strike();g.tick(.01);hidden&&=!e.statusVfx.stagger.visible}
+    const distance=e.obj.position.z,phase=e.furnaceAction.phase;
+    for(let i=0;i<245;i++){strike();g.tick(.01)}
+    const recovered=e.furnaceAction?.phase!=='recovery';
+    g.hero.position.copy(e.obj.position).add(new g.THREE.Vector3(0,0,2));
+    g.furnaceCombat.begin(e,'slash');
+    for(let i=0;i<160;i++){strike();g.tick(.01)}
+    return {cleared,hidden,distance,phase,recovered,slash:e.furnaceAction.phase};
+  });
+  assert.equal(maceControl.cleared,true);assert.equal(maceControl.hidden,true);
+  assert.ok(Math.abs(maceControl.distance-12)<.001);assert.equal(maceControl.phase,'recovery');
+  assert.equal(maceControl.recovered,true);assert.equal(maceControl.slash,'recovery');
   const runs=[];
   for(const hero of ['Ranger','Druid','Engineer','Knight']){
     await page.evaluate(hero=>{const g=window.__game;g.returnToTitle();g.chooseHero(hero);g.chooseLevel('furnace');g.start()},hero);

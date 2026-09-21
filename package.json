@@ -8,8 +8,10 @@
     "build": "vite build",
     "test": "node --test tests/architecture.test.mjs tests/character-stats.test.mjs tests/device-status.test.mjs tests/garden.test.mjs tests/combat.test.mjs tests/levels.test.mjs && node tests/browser.mjs",
     "test:level2": "node --test tests/levels.test.mjs && node tests/furnace-browser.mjs",
+    "test:boss-page": "node tests/boss-test-browser.mjs && node tests/boss-balance-browser.mjs",
     "test:weapons": "node tests/role-weapons.mjs && node tests/mechanics-browser.mjs && node tests/knight-browser.mjs && node tests/knight-vfx.mjs",
-    "test:readability": "node tests/combat-readability.mjs"
+    "test:readability": "node tests/combat-readability.mjs",
+    "test:feedback": "node tests/impact-feedback-browser.mjs"
   },
   "dependencies": {
     "three": "0.180.0"

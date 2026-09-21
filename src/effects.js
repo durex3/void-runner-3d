@@ -128,6 +128,58 @@ export class EffectsSystem{
 
   addCorpse(object,life=1.6){this.corpses.push({obj:object,life})}
 
+  resistImpact(enemy){
+    // A hit confirmation, never a simulated stun or an animation interrupt.
+    if(!this.resistMap){
+      const canvas=document.createElement('canvas');canvas.width=256;canvas.height=96;
+      const context=canvas.getContext('2d');context.font='bold 56px sans-serif';context.textAlign='center';context.textBaseline='middle';
+      context.lineWidth=8;context.strokeStyle='#182329';context.strokeText('抵抗',128,48);
+      context.fillStyle='#ffe6a3';context.fillText('抵抗',128,48);
+      this.resistMap=new T.CanvasTexture(canvas);this.resistMap.colorSpace=T.SRGBColorSpace;
+    }
+    const material=new T.SpriteMaterial({map:this.resistMap,transparent:true,depthWrite:false,depthTest:false,toneMapped:false});
+    const label=new T.Sprite(material);label.scale.set(2.1,.79,1);label.renderOrder=9;
+    const height=new T.Box3().setFromObject(enemy.obj).max.y+.45;
+    label.position.copy(enemy.obj.position).setY(height);label.userData.feedback='stagger-resist';
+    const cleanup=()=>material.dispose();
+    if(!this.add(label,.42,{fixed:true,update:({progress})=>{
+      label.position.x=enemy.obj.position.x;label.position.z=enemy.obj.position.z;label.position.y=height+progress*.35;
+      material.opacity=(1-progress)**.5;label.visible=!enemy.dead;
+    },cleanup}))cleanup();
+    this.deviceAttack({kind:'resist',origin:enemy.obj.position.clone(),target:enemy.obj.position.clone()});
+  }
+
+  deviceAttack({kind,origin,target}){
+    if(this.effects.length>=180)return;
+    const electric=kind==='electric',explosion=kind==='explosion',color=electric?0x91ddff:kind==='thorn'?0xc9ff9c:kind==='resist'?0xffe6a3:0xffb456;
+    const group=new T.Group(),material=new T.MeshBasicMaterial({color,transparent:true,opacity:.95,depthWrite:false,toneMapped:false,side:T.DoubleSide});
+    group.userData.feedback=`device-${kind}`;
+    const from=origin.clone().setY(.85),to=(target||origin).clone().setY(1.1);
+    if(kind==='thorn'||electric){
+      // Damage is hitscan. These short-lived traces show the same resolved shot.
+      const points=[from];
+      if(electric){
+        const side=new T.Vector3().subVectors(to,from).cross(new T.Vector3(0,1,0)).normalize();
+        for(let i=1;i<6;i++)points.push(from.clone().lerp(to,i/6).addScaledVector(side,(i%2?1:-1)*.22));
+      }
+      points.push(to);
+      for(let i=1;i<points.length;i++){
+        const delta=points[i].clone().sub(points[i-1]),length=delta.length();if(length<.001)continue;
+        const beam=new T.Mesh(new T.CylinderGeometry(electric?.045:.055,electric?.045:.055,length,5),material);
+        beam.position.copy(points[i-1]).lerp(points[i],.5);beam.quaternion.setFromUnitVectors(new T.Vector3(0,1,0),delta.normalize());group.add(beam);
+      }
+      const muzzle=new T.Mesh(new T.OctahedronGeometry(.23),material);muzzle.position.copy(from);group.add(muzzle);
+    }
+    const ring=new T.Mesh(new T.RingGeometry(.78,1,48),material);ring.rotation.x=-Math.PI/2;
+    ring.position.copy(explosion?origin:to).setY(.16);group.add(ring);
+    const flash=new T.Mesh(new T.OctahedronGeometry(explosion?.6:.28),material);flash.position.copy(explosion?from:to);group.add(flash);
+    const cleanup=()=>{group.traverse(o=>o.geometry?.dispose());material.dispose()};
+    if(!this.add(group,explosion?.45:.26,{fixed:true,update:({progress})=>{
+      const ease=1-(1-progress)**2;ring.scale.setScalar(explosion?.4+2.8*ease:.3+.65*ease);
+      flash.scale.setScalar(1-progress);material.opacity=.95*(1-progress)**.7;
+    },cleanup}))cleanup();
+  }
+
   update(dt,time,mode){
     if(['playing','won','lost'].includes(mode)){
       for(const corpse of this.corpses){
