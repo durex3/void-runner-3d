@@ -99,7 +99,7 @@ export class RelicWorkshopGame{
     this.effects=new EffectsSystem({scene:this.scene,animateActor:Actors.animateActor,disposeActor:Actors.disposeActor});
     this.meleeVfx=new MeleeVfx({effects:this.effects,camera:this.camera});
     this.remoteVfx=new RemoteVfx({effects:this.effects});
-    this.garden=new Garden({scene:this.scene,hero:this.hero,state:this.state,enemies:()=>this.enemies,damage:(...args)=>this.damageEnemy(...args),toast:message=>this.view.showToast(message),burst:(...args)=>this.effects.burst(...args),onAttack:event=>this.effects.deviceAttack(event),onBossRecovery:boss=>{
+    this.garden=new Garden({scene:this.scene,hero:this.hero,state:this.state,enemies:()=>this.enemies,damage:(...args)=>this.damageEnemy(...args),toast:message=>this.view.showToast(message),burst:(...args)=>this.effects.burst(...args),onAttack:event=>{this.effects.deviceAttack(event);this.audio.playDevice(event.kind)},onBossRecovery:boss=>{
       this.hazards=this.hazards.filter(h=>{if(h.source!==boss)return true;this.scene.remove(h.obj);h.obj.userData.dispose?.();return false});
       this.effects.updateEnemyStatus(boss,this.state.time);
     }});
@@ -159,6 +159,7 @@ export class RelicWorkshopGame{
   start(){
     this.clearRun();
     resetRunState(this.state);
+    this.audio.resume();
     this.lastDirection.set(0,0,1);
     this.hero.position.set(0,0,4);
     Actors.resetActor(this.hero);
@@ -179,6 +180,7 @@ export class RelicWorkshopGame{
   }
 
   clearRun(){
+    this.audio.stopAll();
     this.furnaceCombat.reset();this.furnaceCycle.reset();this.state.furnaceStatus='';
     this.furnaceWorld.update(this.furnaceCycle,0);
     this.combat.reset();
@@ -237,7 +239,7 @@ export class RelicWorkshopGame{
     const hp=elite?150+this.state.wave*15:type==='boss'?1500:type==='runner'?25:45+this.state.wave*5;
     const enemy={obj:object,type,elite,stunned:false,slow:0,hp,maxHp:hp,size,speed:type==='boss'?1.1:type==='runner'?3.5:1.6+this.state.wave*.06,attack:1.5};
     enemy.customBoss=furnace&&type==='boss';
-    if(enemy.customBoss){enemy.size=1.3;enemy.hp=enemy.maxHp=2000;object.position.set(0,0,-16)}
+    if(enemy.customBoss){enemy.size=1.3;enemy.hp=enemy.maxHp=2000;object.position.set(0,0,-16);this.state.bossStats={startedAt:this.state.time,damageByWeapon:{},damageByDevice:{},damageTaken:0,damageSources:{},actions:{}}}
     this.effects.attachEnemyStatus(enemy);
     this.enemies.push(enemy);
     return enemy;
@@ -255,6 +257,11 @@ export class RelicWorkshopGame{
 
   damageEnemy(enemy,damage,source={}){
     if(enemy.dead||enemy.stunned)return;
+    const applied=Math.min(enemy.hp,damage);
+    if(enemy.customBoss&&this.state.bossStats&&applied>0){
+      if(Number.isInteger(source.weapon)){const key=source.weaponLabel||String(source.weapon);this.state.bossStats.damageByWeapon[key]=(this.state.bossStats.damageByWeapon[key]||0)+applied}
+      if(source.device){const labels={thorn:'自动弩台',electric:'雷鸣法典',blast:'炼金炸瓶'};const key=labels[source.device]||source.device;this.state.bossStats.damageByDevice[key]=(this.state.bossStats.damageByDevice[key]||0)+applied}
+    }
     enemy.hp-=damage;
     const reaction=MELEE_FEEDBACK[source.model]?.reaction??.55;
     if(!(enemy.customBoss&&enemy.furnaceAction))Actors.hitActor(enemy.obj,reaction);
@@ -303,12 +310,14 @@ export class RelicWorkshopGame{
     return true;
   }
 
-  hurt(amount){
+  hurt(amount,source='other'){
     if(['won','lost','title'].includes(this.state.mode))return;
     if(this.state.inv>0)return;
     const reduction=this.hero.userData.profile.damageTaken||1;
     if(reduction<1){this.showMechanicOnce('knight-shield','守卫剑盾 · 受到伤害减少 20%');const facing=new T.Vector3(Math.sin(this.hero.rotation.y),0,Math.cos(this.hero.rotation.y));this.effects.guardFlash(this.hero.position,facing)}
     amount*=reduction;
+    const actual=Math.min(this.state.hp,amount);
+    if(this.state.bossStats&&actual>0){this.state.bossStats.damageTaken+=actual;this.state.bossStats.damageSources[source]=(this.state.bossStats.damageSources[source]||0)+actual}
     this.state.hp=Math.max(0,this.state.hp-amount);
     Actors.hitActor(this.hero);
     this.state.inv=.65;
@@ -329,18 +338,19 @@ export class RelicWorkshopGame{
 
   finish(win){
     this.state.mode=win?'won':'lost';
-    this.furnaceCombat.reset();this.furnaceCycle.suppress();this.furnaceWorld.update(this.furnaceCycle,this.state.time);
+    this.audio.stopAll();this.furnaceCombat.reset();this.furnaceCycle.suppress();this.furnaceWorld.update(this.furnaceCycle,this.state.time);
     if(!win)Actors.dieActor(this.hero);
     this.input.clear();
     this.best=Math.max(this.best,this.state.kills);
     this.saveBest();
-    this.view.showFinish({win,state:this.state,garden:this.garden,best:this.best,onRestart:()=>this.start(),onChangeHero:()=>this.returnToTitle(),onNext:()=>{this.returnToTitle();this.chooseLevel('furnace');this.start()}});
+    this.view.showFinish({win,state:this.state,garden:this.garden,best:this.best,bossStats:this.state.bossStats,onRestart:()=>this.start(),onChangeHero:()=>this.returnToTitle(),onNext:()=>{this.returnToTitle();this.chooseLevel('furnace');this.start()}});
   }
 
   pause(){
     if(!['playing','paused'].includes(this.state.mode))return;
-    if(this.state.mode==='paused'){this.state.mode='playing';this.view.hideModal();return}
+    if(this.state.mode==='paused'){this.state.mode='playing';this.audio.resume();this.view.hideModal();return}
     this.state.mode='paused';
+    this.audio.pause();
     this.input.clear();
     this.view.showPause(()=>this.pause());
   }
@@ -377,7 +387,7 @@ export class RelicWorkshopGame{
       this.state.furnaceStatus=this.furnaceCycle.phase==='warning'?'地火预警 · 离开炉栅':this.furnaceCycle.phase==='burn'?'炉栅喷火 · 绕行石板':'';
       if(boss?.furnaceAction?.ground?.visible)this.state.furnaceStatus=this.furnaceCycle.phase==='warning'?'地火预警 · 炉栅与锁定圆圈':'地火燃烧 · 炉栅与锁定圆圈';
       this.furnaceWorld.update(this.furnaceCycle,this.state.time);
-      if(this.furnaceCycle.hits(this.hero.position))this.hurt(10);
+      if(this.furnaceCycle.hits(this.hero.position))this.hurt(10,'furnace-vent');
     }
     if(this.state.mode!=='playing')return;
     if(this.pendingElite){this.captureChoice();return}
@@ -391,11 +401,17 @@ export class RelicWorkshopGame{
     const heroFrozen=this.heroHitStop>0;
     this.heroHitStop=Math.max(0,this.heroHitStop-dt);
     const moveSpeed=this.state.speed*(this.hero.userData.profile.moveBonus||1);
-    const move=new T.Vector3(Number(this.input.isDown('d','arrowright'))-Number(this.input.isDown('a','arrowleft')),0,Number(this.input.isDown('s','arrowdown'))-Number(this.input.isDown('w','arrowup')));
+    const moveInput=this.input.getMoveVector();
+    const move=new T.Vector3(moveInput.x,0,moveInput.y);
     move.applyAxisAngle(new T.Vector3(0,1,0),Math.PI/4);
-    if(move.lengthSq()){move.normalize();this.lastDirection.copy(move);if(!heroFrozen)this.hero.position.addScaledVector(move,moveSpeed*dt);this.hero.rotation.y=Math.atan2(move.x,move.z)}
+    if(move.lengthSq()){
+      if(move.lengthSq()>1)move.normalize();
+      this.lastDirection.copy(move).normalize();
+      if(!heroFrozen)this.hero.position.addScaledVector(move,moveSpeed*dt);
+      this.hero.rotation.y=Math.atan2(move.x,move.z);
+    }
     if(this.combat.swing)this.hero.rotation.y=Math.atan2(this.combat.swing.dir.x,this.combat.swing.dir.z);
-    Actors.animateActor(this.hero,heroFrozen?0:dt,this.state.time,move.lengthSq()?moveSpeed:0);
+    Actors.animateActor(this.hero,heroFrozen?0:dt,this.state.time,move.lengthSq()?moveSpeed*Math.min(1,move.length()):0);
     if(this.hero.position.length()>20)this.hero.position.setLength(20);
     this.hero.userData.movementVelocity=this.hero.position.clone().sub(previousPosition).divideScalar(Math.max(dt,.0001));
     this.hero.visible=this.state.inv<=0||Math.floor(this.state.inv*20)%2===0;
@@ -440,7 +456,7 @@ export class RelicWorkshopGame{
       enemy.obj.rotation.y=Math.atan2(facing.x,facing.z);
       Actors.animateActor(enemy.obj,dt,this.state.time,!enemy.rangedWindup&&(enemy.type!=='spitter'||distance>8)?speed:0);
       enemy.attack-=dt;enemy.melee=(enemy.melee||0)-dt;
-      if(distance<enemy.size+.45){this.hurt(enemy.type==='boss'?22:9);if(enemy.melee<=0){Actors.kickActor(enemy.obj);enemy.melee=.8}}
+      if(distance<enemy.size+.45){this.hurt(enemy.type==='boss'?22:9,enemy.customBoss?'boss-contact':'enemy-contact');if(enemy.melee<=0){Actors.kickActor(enemy.obj);enemy.melee=.8}}
       if(enemy.type==='spitter'||enemy.type==='boss'){
         const duration=enemy.type==='boss'?.6:.45;
         if(!enemy.rangedWindup&&enemy.attack<=duration){
@@ -488,7 +504,7 @@ export class RelicWorkshopGame{
 
   updateHazards(dt){
     const heroCenter=this.hero.position.clone().setY(.7);
-    for(const hazard of this.hazards){hazard.life-=dt;hazard.obj.position.addScaledVector(hazard.v,dt);if(hazard.obj.position.distanceTo(heroCenter)<.65){this.hurt(12);hazard.life=0}}
+    for(const hazard of this.hazards){hazard.life-=dt;hazard.obj.position.addScaledVector(hazard.v,dt);if(hazard.obj.position.distanceTo(heroCenter)<.65){this.hurt(12,hazard.source?.customBoss?'boss-projectile':'enemy-projectile');hazard.life=0}}
     this.hazards=this.hazards.filter(hazard=>{if(hazard.life>0)return true;this.scene.remove(hazard.obj);hazard.obj.userData.dispose?.();return false});
   }
 
@@ -549,9 +565,9 @@ export class RelicWorkshopGame{
     const game=this;
     window.__game={
       chooseLevel:id=>game.chooseLevel(id),furnaceCycle:this.furnaceCycle,furnaceCombat:this.furnaceCombat,furnaceWorld:this.furnaceWorld,beginWave:()=>game.beginWave(),pause:()=>game.pause(),dash:()=>game.dash(),setManual:value=>{game.testLab={manual:value}},render:()=>{game.updateCamera(1,performance.now());game.view.renderHud(game.state,game.garden,game.enemies,game.currentStats(),game.currentDevices());game.renderer.render(game.scene,game.camera)},
-      THREE:T,actors:Actors,state:this.state,hero:this.hero,garden:this.garden,combat:this.combat,effects:this.effects,meleeVfx:this.meleeVfx,remoteVfx:this.remoteVfx,audio:this.audio,
+      THREE:T,actors:Actors,state:this.state,hero:this.hero,input:this.input,garden:this.garden,combat:this.combat,effects:this.effects,meleeVfx:this.meleeVfx,remoteVfx:this.remoteVfx,audio:this.audio,
       get enemies(){return game.enemies},get drops(){return game.drops},get bullets(){return game.combat.bullets},get hazards(){return game.hazards},get corpses(){return game.effects.corpses},
-      selectHero:Actors.selectHero,chooseHero:name=>game.chooseHero(name),returnToTitle:()=>game.returnToTitle(),equip:slot=>game.equip(slot),attack:()=>game.attack(),tick:dt=>game.tick(dt),damageEnemy:(...args)=>game.damageEnemy(...args),hurt:amount=>game.hurt(amount),levelUp:()=>game.levelUp(),finish:win=>game.finish(win),start:()=>game.start(),spawnEnemy:(...args)=>game.spawnEnemy(...args),renderer:this.renderer,scene:this.scene,camera:this.camera,get lastMeleeFeedback(){return game.lastMeleeFeedback},
+      selectHero:Actors.selectHero,chooseHero:name=>game.chooseHero(name),returnToTitle:()=>game.returnToTitle(),equip:slot=>game.equip(slot),attack:()=>game.attack(),tick:dt=>game.tick(dt),damageEnemy:(...args)=>game.damageEnemy(...args),hurt:(...args)=>game.hurt(...args),levelUp:()=>game.levelUp(),finish:win=>game.finish(win),start:()=>game.start(),spawnEnemy:(...args)=>game.spawnEnemy(...args),renderer:this.renderer,scene:this.scene,camera:this.camera,get lastMeleeFeedback(){return game.lastMeleeFeedback},get bossStats(){return game.state.bossStats},
     };
     if(new URLSearchParams(location.search).has('scenario')){
       const {installCombatLab}=await import('./combat-lab.js');

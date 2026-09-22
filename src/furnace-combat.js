@@ -20,6 +20,7 @@ export class FurnaceCombat{
   reset(){for(const enemy of this.attacks.keys())this.cancel(enemy)}
   cancel(enemy){
     const attack=this.attacks.get(enemy);
+    if(attack)this.game.audio?.stopOwner(attack);
     if(attack?.warning){attack.warning.removeFromParent();attack.warning.geometry.dispose();attack.warning.material.dispose()}
     if(attack?.ground)attack.ground.traverse(obj=>{if(obj.isSprite)obj.material.dispose();else if(obj.isMesh){obj.geometry.dispose();obj.material.dispose();if(obj.isInstancedMesh)obj.dispose()}});
     attack?.ground?.removeFromParent();
@@ -33,6 +34,7 @@ export class FurnaceCombat{
     if(attack.ground)attack.ground.visible=false;
     if(enemy.obj.userData.rig)enemy.obj.userData.rig.forgeAge=null;
     if(enemy.type==='boss'){
+      this.game.audio?.playBossCue('recovery',attack);
       this.game.furnaceCycle.suppress();
       this.game.clearObjects(this.game.hazards);
     }
@@ -52,6 +54,7 @@ export class FurnaceCombat{
     const attack={kind,phase:kind==='forge'?'forge':'warning',left:kind==='forge'?.9:boss?(strike===2?.9:1.2):.95,direction,origin,length,warning,hit:false,
       strike,strikes:strikes??(boss&&kind==='slash'&&enemy.hp<=enemy.maxHp*.5?2:1)};
     this.attacks.set(enemy,attack);enemy.furnaceAction=attack;
+    if(boss){this.game.state?.bossStats&&(this.game.state.bossStats.actions[kind]=(this.game.state.bossStats.actions[kind]||0)+1);this.game.audio?.playBossCue(kind,attack,strike)}
     attack.warningDuration=attack.left;
     Actors.setEnemyPresentation(enemy.obj,attack,boss);
     if(boss&&kind==='forge'){
@@ -114,17 +117,18 @@ export class FurnaceCombat{
       attack.warning.material.opacity=.25+.15*(1+Math.sin(game.state.time*9));
       if(attack.left<=0){
         attack.phase='attack';attack.left=attack.kind==='slash'?.35:.6;
+        if(boss)this.game.audio?.playBossImpact(attack.kind,attack);
         attack.warning.material.color.setHex(0xff553d);attack.warning.material.opacity=.6;
         if(boss){if(attack.kind!=='slash')Actors.playEnemyAttack(enemy.obj,'Melee_2H_Attack_Stab',attack.left)}
         else Actors.kickActor(enemy.obj);
-        if(attack.kind==='slash'&&inSlash(game.hero.position,attack.origin,attack.direction)){game.hurt(24);attack.hit=true}
+        if(attack.kind==='slash'&&inSlash(game.hero.position,attack.origin,attack.direction)){game.hurt(24,'boss-slash');attack.hit=true}
       }
     }else if(attack.phase==='attack'){
       if(attack.kind==='charge'){
         const from=enemy.obj.position.clone();
         enemy.obj.position.addScaledVector(attack.direction,attack.length/.6*Math.min(dt,Math.max(0,attack.left+dt)));
         if(enemy.obj.position.length()>20)enemy.obj.position.setLength(20);
-        if(!attack.hit&&segmentDistance(game.hero.position,from,enemy.obj.position)<(boss?1.5:1)){game.hurt(boss?22:12);attack.hit=true}
+        if(!attack.hit&&segmentDistance(game.hero.position,from,enemy.obj.position)<(boss?1.5:1)){game.hurt(boss?22:12,boss?'boss-charge':'enemy-charge');attack.hit=true}
       }
       if(attack.left<=0){
         if(attack.kind==='slash'&&attack.strike<attack.strikes){
@@ -139,12 +143,13 @@ export class FurnaceCombat{
       attack.ground.visible=attack.groundAge<FORGE_TARGET.warning+FORGE_TARGET.burn;
       attack.groundFill.material.color.setHex(burning?0xff553d:0xffb953);
       attack.groundFill.material.opacity=burning?.28:.15+.15*attack.groundAge/FORGE_TARGET.warning;
+      if(burning&&!attack.audioBurned&&boss){attack.audioBurned=true;this.game.audio?.playBossImpact('forge',attack)}
       attack.groundFlames.visible=burning;
       if(burning)attack.groundFlames.userData.update(attack.groundAge-FORGE_TARGET.warning);
       // The target stays at cast-start position; each cast can hurt only once.
       if(burning&&attack.ground.visible&&!attack.groundHit&&
         Math.hypot(game.hero.position.x-attack.ground.position.x,game.hero.position.z-attack.ground.position.z)<=FORGE_TARGET.radius){
-        attack.groundHit=true;game.hurt(FORGE_TARGET.damage);
+        attack.groundHit=true;game.hurt(FORGE_TARGET.damage,'boss-forge');
       }
       // The vent cycle owns the end time.
       if(game.furnaceCycle.phase==='cool')this.recover(enemy,attack);

@@ -10,5 +10,6 @@ export function createGameState(){
 
 export function resetRunState(state){
   Object.assign(state,RUN_DEFAULTS);
+  state.bossStats=null;
   return state;
 }

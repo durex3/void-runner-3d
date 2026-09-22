@@ -11,7 +11,9 @@
     "test:boss-page": "node tests/boss-test-browser.mjs && node tests/boss-balance-browser.mjs",
     "test:weapons": "node tests/role-weapons.mjs && node tests/mechanics-browser.mjs && node tests/knight-browser.mjs && node tests/knight-vfx.mjs",
     "test:readability": "node tests/combat-readability.mjs",
-    "test:feedback": "node tests/impact-feedback-browser.mjs"
+    "test:feedback": "node tests/impact-feedback-browser.mjs",
+    "test:mobile": "node tests/mobile-joystick.mjs",
+    "test:audio": "node tests/audio-browser.mjs"
   },
   "dependencies": {
     "three": "0.180.0"
