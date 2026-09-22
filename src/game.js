@@ -24,7 +24,7 @@ import {FurnaceCombat} from './furnace-combat.js';
 
 const MELEE_FEEDBACK={
   sword_1handed:{freeze:.025,shake:.035,reaction:.68},
-  sword_2handed:{freeze:.06,shake:.3,reaction:1},
+  sword_2handed:{freeze:.075,shake:.42,reaction:1},
   Skeleton_Mace:{freeze:.05,shake:.23,reaction:.92},
 };
 

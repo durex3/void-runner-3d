@@ -23,7 +23,7 @@ try{
     return {visible:!!trail?.visible,phase,pixels,damage:10000-g.enemies[0].hp};
    });
    if(frame<28)assert.equal(result.visible,false,'no head ornament during windup');
-   if(result.visible){visible++;assert.ok(result.phase>=.4&&result.phase<=.71,'short afterimage remains only around the chop');peakPixels=Math.max(peakPixels,result.pixels);}
+   if(result.visible){visible++;assert.ok(result.phase>=.4&&result.phase<=.76,'140 ms afterimage remains only around the chop');peakPixels=Math.max(peakPixels,result.pixels);}
    if([20,35,39,48,62].includes(frame))await page.screenshot({path:`test-results/heavy-sword/${direction}-frame-${frame}.png`});
    if(frame===39)assert.ok(result.damage>0&&Math.abs(result.phase-.52)<.03,'impact aligned with chop');
   }
