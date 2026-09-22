@@ -19,9 +19,23 @@ const TEXTURES={
 
 const STYLE={
   sword_1handed:{slash:'slashShield',atlasRow:2,warriorTexture:null,warriorRow:1,impactTexture:'combatSword',slashSize:6.4,slashAspect:.7,slashLife:.32,slashColor:0xe5faff,reach:1.25,baseAngle:0,impactSize:1.4,impactColor:0xffd08a},
-  sword_2handed:{slash:'slashHeavy',impactTexture:'combatHeavy',slashSize:4.6,slashLife:.22,slashColor:0xfff4df,reach:1.45,impactSize:2.4,impactColor:0xffdea3},
+  sword_2handed:{slash:'slashHeavy',impactTexture:'combatHeavy',slashSize:4.6,slashLife:.22,slashColor:0xfff4df,reach:1.45,impactSize:2.4,impactColor:0xffdea3,arcSize:6.8,arcAspect:.62},
   Skeleton_Mace:{slash:'shockwave',atlasRow:6,warriorTexture:null,warriorRow:5,impactTexture:'combatMace',slashSize:6.2,slashLife:.52,slashColor:0x8ff5e9,reach:1.2,dust:'dustLight',dustSize:4,dustColor:0x718f8d,dustOpacity:.56,dustLife:.62,landing:'impact',landingSize:2.8,landingOffset:0,landingColor:0xd8fff7,landingOpacity:.9,landingLife:.34,impactSize:2.2,impactColor:0xd8fff8,coreSize:2.8,coreLife:.28,shards:6,ground:true,echo:true},
 };
+
+function crescentGeometry({segments=36,start=-1.15,end=.82,inner=1.5,outer=2.15}){
+  const positions=new Float32Array((segments+1)*2*3),indices=[];
+  for(let i=0;i<=segments;i++){
+    const t=i/segments,angle=T.MathUtils.lerp(start,end,t),envelope=Math.pow(Math.sin(Math.PI*t),.72);
+    const tipExtension=(1-t)*.34,outerRadius=outer+tipExtension,thickness=(outer-inner)*envelope;
+    const innerRadius=outerRadius-thickness;
+    const outerX=Math.sin(angle)*outerRadius,outerZ=Math.cos(angle)*outerRadius;
+    const innerX=Math.sin(angle)*innerRadius,innerZ=Math.cos(angle)*innerRadius;
+    const offset=i*6;positions[offset]=outerX;positions[offset+1]=0;positions[offset+2]=outerZ;positions[offset+3]=innerX;positions[offset+4]=0;positions[offset+5]=innerZ;
+    if(i<segments){const n=i*2;indices.push(n,n+1,n+2,n+1,n+3,n+2)}
+  }
+  const geometry=new T.BufferGeometry();geometry.setIndex(indices);geometry.setAttribute('position',new T.BufferAttribute(positions,3));return geometry;
+}
 
 export class MeleeVfx{
   constructor({effects,camera,loader=new T.TextureLoader()}){
@@ -112,7 +126,7 @@ export class MeleeVfx{
 
   beginSwing(actor){
     if(actor.userData.profile?.model!=='sword_2handed')return;
-    const rig=actor.userData.rig,weapon=rig.held.children[0],action=rig.attackAction;
+    const style=STYLE[actor.userData.profile.model],rig=actor.userData.rig,weapon=rig.held.children[0],action=rig.attackAction;
     if(!weapon||!action||!this.textures.slashHeavy)return;
     weapon.updateWorldMatrix(true,true);
     const inverse=weapon.matrixWorld.clone().invert(),bounds=new T.Box3();
@@ -121,7 +135,7 @@ export class MeleeVfx{
     tip[axis]=Math.abs(bounds.max[axis])>Math.abs(bounds.min[axis])?bounds.max[axis]:bounds.min[axis];
     const root=tip.clone();root[axis]*=.38;
     const trailTip=tip.clone();trailTip[axis]*=1.13;
-    const capacity=32,linger=.075,samples=[];
+    const capacity=40,linger=.11,samples=[];
     const geometry=new T.BufferGeometry(),positions=new Float32Array(capacity*6),uvs=new Float32Array(capacity*4),strengths=new Float32Array(capacity*2),indices=[];
     for(let i=0;i<capacity-1;i++){const n=i*2;indices.push(n,n+1,n+2,n+1,n+3,n+2);}
     geometry.setIndex(indices);
@@ -137,8 +151,8 @@ export class MeleeVfx{
         void main(){float taper=smoothstep(0.0,.65,vUv.x);
           float rim=exp(-pow((vUv.y-.86)/mix(.03,.13,taper),2.0));
           float veil=smoothstep(.3,.8,vUv.y)*(1.0-smoothstep(.86,1.0,vUv.y))*.11;
-          vec3 color=mix(vec3(1.0,.68,.32),vec3(1.0,.96,.84),rim);
-          gl_FragColor=vec4(color,(rim*.88+veil)*vStrength*taper);}`,
+          vec3 color=mix(vec3(1.0,.58,.18),vec3(1.0,.98,.88),rim);
+          gl_FragColor=vec4(color,(rim*1.05+veil)*vStrength*taper);}`,
     });
     const trail=new T.Mesh(geometry,material);trail.visible=false;trail.frustumCulled=false;
     // The physical ribbon can become edge-on. A narrow camera-facing rim keeps
@@ -156,7 +170,39 @@ export class MeleeVfx{
           gl_FragColor=vec4(1.0,.94,.78,edge*tail*vStrength*.85);}`,
     });
     const rim=new T.Mesh(rimGeometry,rimMaterial);rim.frustumCulled=false;rim.renderOrder=6;trail.add(rim);
-    trail.userData.meleeVfx='swing-trail';trail.userData.bladeTrail=true;
+    trail.userData.bladeTrail=true;
+
+    // A tapered, ground-space crescent gives the greatsword a readable
+    // comet-like silhouette: thin tips, a heavier center, and a short echo.
+    const arcGroup=new T.Group();arcGroup.userData.heavySwingArc=true;
+    const outerGeometry=crescentGeometry({inner:1.55,outer:2.18}),innerGeometry=crescentGeometry({inner:1.88,outer:2.12});
+    const outerMaterial=new T.MeshBasicMaterial({color:0xff7b22,transparent:true,opacity:0,depthTest:false,depthWrite:false,side:T.DoubleSide,toneMapped:false,blending:T.AdditiveBlending});
+    const innerMaterial=new T.MeshBasicMaterial({color:0xfff4cf,transparent:true,opacity:0,depthTest:false,depthWrite:false,side:T.DoubleSide,toneMapped:false,blending:T.AdditiveBlending});
+    const echoMaterial=new T.MeshBasicMaterial({color:0xffaa45,transparent:true,opacity:0,depthTest:false,depthWrite:false,side:T.DoubleSide,toneMapped:false,blending:T.AdditiveBlending});
+    const outerArc=new T.Mesh(outerGeometry,outerMaterial),innerArc=new T.Mesh(innerGeometry,innerMaterial),echoArc=new T.Mesh(outerGeometry,echoMaterial);
+    arcGroup.renderOrder=5;
+    outerArc.renderOrder=5;echoArc.renderOrder=5;innerArc.renderOrder=6;
+    echoArc.position.z=-.18;echoArc.scale.set(1.04,1,1);arcGroup.add(echoArc,outerArc,innerArc);
+    // Keep a representative material on the group for visual regression probes.
+    arcGroup.material=innerMaterial;
+    const arcFacing=new T.Vector3();
+    const arcAdded=this.effects.add(arcGroup,rig.attackLeft+.16,{fixed:true,update:({progress})=>{
+      if(actor.userData.rig!==rig||rig.held.children[0]!==weapon||rig.attackAction!==action||rig.dead){arcGroup.visible=false;return;}
+      const phase=action.time/action.getClip().duration;
+      if(phase<.28||phase>.72){arcGroup.visible=false;return;}
+      arcFacing.set(Math.sin(actor.rotation.y),0,Math.cos(actor.rotation.y));
+      arcGroup.position.copy(actor.position).addScaledVector(arcFacing,.58).setY(.13);
+      arcGroup.rotation.y=actor.rotation.y;
+      const windup=T.MathUtils.clamp((phase-.28)/.13,0,1);
+      const strike=T.MathUtils.clamp((phase-.40)/.14,0,1);
+      const fade=T.MathUtils.clamp((.72-phase)/.16,0,1);
+      const visibility=Math.max(.12*windup,.96*strike*fade);
+      const pulse=1+.1*Math.sin(Math.min(1,strike)*Math.PI);
+      outerMaterial.opacity=.48*visibility;innerMaterial.opacity=.94*visibility;echoMaterial.opacity=.16*visibility;
+      outerArc.scale.setScalar(pulse);innerArc.scale.setScalar(pulse);echoArc.scale.setScalar(pulse*1.04);
+      arcGroup.visible=true;
+    },cleanup:()=>{outerGeometry.dispose();innerGeometry.dispose();outerMaterial.dispose();innerMaterial.dispose();echoMaterial.dispose();}});
+    if(!arcAdded){outerGeometry.dispose();innerGeometry.dispose();outerMaterial.dispose();innerMaterial.dispose();echoMaterial.dispose();}
     let previous=weapon.localToWorld(tip.clone()),previousPhase=0;
     // Store blade edges in world space so the ribbon follows the chop, not the camera.
     const added=this.effects.add(trail,rig.attackLeft+.12,{fixed:true,update:({dt,age})=>{
@@ -176,7 +222,7 @@ export class MeleeVfx{
         const tangent=after.clone().sub(before),view=this.camera.getWorldDirection(new T.Vector3());
         const across=new T.Vector3().crossVectors(tangent,view);
         if(across.lengthSq()<1e-8)across.set(1,0,0).applyQuaternion(this.camera.quaternion);
-        across.normalize().multiplyScalar(.12);
+        across.normalize().multiplyScalar(.16);
         sample.tip.clone().add(across).toArray(rimPositions,i*6);
         sample.tip.clone().sub(across).toArray(rimPositions,i*6+3);
         uvs.set([i/(samples.length-1||1),0,i/(samples.length-1||1),1],i*4);

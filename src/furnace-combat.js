@@ -45,10 +45,13 @@ export class FurnaceCombat{
     if(!direction.lengthSq())direction.set(0,0,1);
     const boss=enemy.type==='boss',length=boss?12:8;
     const geometry=kind==='slash'?new T.CircleGeometry(5.8,48,Math.PI/2-1.05,2.1):kind==='forge'?new T.RingGeometry(1.8,2.1,48):new T.PlaneGeometry(boss?3:2,length+(boss?3:2));
-    const warning=new T.Mesh(geometry,new T.MeshBasicMaterial({color:0xffb953,transparent:true,opacity:.35,depthWrite:false,side:T.DoubleSide}));
+    const warning=new T.Mesh(geometry,new T.MeshBasicMaterial({color:0xffb953,transparent:true,opacity:.26,depthWrite:false,side:T.DoubleSide}));
     warning.rotation.x=-Math.PI/2;
     warning.rotation.z=Math.atan2(direction.x,direction.z)+Math.PI;
     warning.position.copy(origin).setY(.075);
+    // Keep enemy telegraphs readable without flattening the hero's melee VFX
+    // on top of them. Hero effects use render orders 4–6.
+    warning.renderOrder=1;
     if(kind==='charge')warning.position.addScaledVector(direction,length/2);
     this.game.scene.add(warning);
     const attack={kind,phase:kind==='forge'?'forge':'warning',left:kind==='forge'?.9:boss?(strike===2?.9:1.2):.95,direction,origin,length,warning,hit:false,
@@ -114,11 +117,12 @@ export class FurnaceCombat{
     attack.left-=dt;
     let forgeSpeed=0;
     if(attack.phase==='warning'){
-      attack.warning.material.opacity=.25+.15*(1+Math.sin(game.state.time*9));
+      attack.warning.material.opacity=.17+.10*(1+Math.sin(game.state.time*9));
       if(attack.left<=0){
         attack.phase='attack';attack.left=attack.kind==='slash'?.35:.6;
         if(boss)this.game.audio?.playBossImpact(attack.kind,attack);
-        attack.warning.material.color.setHex(0xff553d);attack.warning.material.opacity=.6;
+        attack.warning.material.color.setHex(0xff553d);
+        attack.warning.material.opacity=attack.kind==='charge'?.32:attack.kind==='slash'?.36:.42;
         if(boss){if(attack.kind!=='slash')Actors.playEnemyAttack(enemy.obj,'Melee_2H_Attack_Stab',attack.left)}
         else Actors.kickActor(enemy.obj);
         if(attack.kind==='slash'&&inSlash(game.hero.position,attack.origin,attack.direction)){game.hurt(24,'boss-slash');attack.hit=true}
