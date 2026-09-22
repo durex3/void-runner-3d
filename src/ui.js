@@ -195,7 +195,10 @@ export class GameView{
     const warning=garden.effects.some(effect=>effect.stomp);
     const recovering=enemies.some(enemy=>enemy.type==='boss'&&!enemy.dead&&enemy.recovery>0);
     const furnaceBoss=enemies.find(e=>e.customBoss&&!e.dead),action=furnaceBoss?.furnaceAction;
-    const message=warning?'巨像践踏 · 危险区域':recovering?'首领收招中 · 反击时机':state.furnaceStatus||(action?.phase==='warning'?(action.kind==='charge'?'冲锋预警 · 侧向避让':'重斩预警 · 绕到背后'):'');
+    const ruinsBoss=enemies.find(e=>e.type==='boss'&&!e.customBoss&&!e.dead),volley=ruinsBoss?.rangedWindup;
+    const message=warning?'巨像践踏 · 危险区域':recovering?'首领收招中 · 反击时机':state.furnaceStatus||
+      (action?.phase==='warning'?(action.kind==='charge'?'冲锋预警 · 侧向避让':action.kind==='forge'?'地火召唤 · 离开圆圈':'重斩预警 · 绕到背后'):
+      (volley?.pattern==='fan'?'预判扇射 · 侧向变向':volley?.pattern==='ring'?'环形弹幕 · 保持移动':''));
     const danger=this.$('#danger-notice');
     if(danger.textContent!==message)danger.textContent=message;
     this.$('#battle-notice').classList.toggle('danger-active',!!message);
@@ -234,7 +237,7 @@ export class GameView{
       this.$('#bossbar i').style.width=`${boss.hp/boss.maxHp*100}%`;
       const recovering=boss.recovery>0;
       const casting=!!(boss.rangedWindup||boss.furnaceAction)&&!recovering;
-      bossStateLabel.textContent=recovering?'恢复中 · 接触安全 · 可反击':casting?(boss.customBoss?'蓄力中 · 注意预警':'施法中 · 注意弹幕'):'';
+      bossStateLabel.textContent=recovering?'恢复中 · 接触安全 · 可反击':casting?(boss.customBoss?(boss.furnaceAction?.kind==='forge'?'召唤地火 · 离开圆圈':boss.furnaceAction?.kind==='charge'?'冲锋蓄力 · 侧向避让':'重斩蓄力 · 绕到背后'):(boss.rangedWindup?.pattern==='fan'?'预判扇射 · 侧向变向':boss.rangedWindup?.pattern==='ring'?'环形弹幕 · 保持移动':'施法中 · 注意弹幕')):'';
       if(!recovering&&boss.furnaceAction?.kind==='slash'&&boss.furnaceAction.strikes===2)bossStateLabel.textContent=`连斩 ${boss.furnaceAction.strike}/2 · ${boss.furnaceAction.phase==='warning'?'蓄力中':'挥斩中'}`;
       bossState.classList.toggle('is-recovering',recovering);
       bossState.classList.toggle('is-casting',casting);
