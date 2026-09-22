@@ -29,7 +29,9 @@ export class FurnaceCombat{
     if(enemy.obj.userData.rig)enemy.obj.userData.rig.forgeAge=null;
   }
   recover(enemy,attack){
-    attack.phase='recovery';attack.left=enemy.type==='boss'?(attack.kind==='slash'?1.8:2.4):1.3;
+    attack.phase='recovery';
+    const rangedPlayer=this.game.hero.userData.profile?.grip!=='melee';
+    attack.left=enemy.type==='boss'?(attack.kind==='slash'?1.8:(attack.kind==='charge'&&rangedPlayer?1.9:2.4)):1.3;
     enemy.recovery=attack.left;attack.warning.visible=false;
     if(attack.ground)attack.ground.visible=false;
     if(enemy.obj.userData.rig)enemy.obj.userData.rig.forgeAge=null;
@@ -43,7 +45,7 @@ export class FurnaceCombat{
     this.cancel(enemy);
     const origin=enemy.obj.position.clone(),direction=this.game.hero.position.clone().sub(origin).setY(0).normalize();
     if(!direction.lengthSq())direction.set(0,0,1);
-    const boss=enemy.type==='boss',length=boss?12:8;
+    const boss=enemy.type==='boss',rangedPlayer=this.game.hero.userData.profile?.grip!=='melee',length=boss?(rangedPlayer?14:12):8;
     const geometry=kind==='slash'?new T.CircleGeometry(5.8,48,Math.PI/2-1.05,2.1):kind==='forge'?new T.RingGeometry(1.8,2.1,48):new T.PlaneGeometry(boss?3:2,length+(boss?3:2));
     const warning=new T.Mesh(geometry,new T.MeshBasicMaterial({color:0xffb953,transparent:true,opacity:.26,depthWrite:false,side:T.DoubleSide}));
     warning.rotation.x=-Math.PI/2;

@@ -35,6 +35,16 @@ test('slash recovery is shorter while charge and forge keep their counterattack 
   ai.reset();
 });
 
+test('ranged players get a longer charge lane without changing melee recovery',()=>{
+  const {game,enemy,ai}=bossFixture();
+  game.hero.userData.profile=HEROES.Druid.weapons[2];
+  ai.begin(enemy,'charge');
+  assert.equal(enemy.furnaceAction.length,14);
+  ai.recover(enemy,enemy.furnaceAction);
+  assert.equal(enemy.recovery,1.9);
+  ai.reset();
+});
+
 test('two-hit slash snapshots half health and locks a fresh second warning',()=>{
   const {game,enemy,ai}=bossFixture();game.hero.position.set(0,0,4);
   ai.begin(enemy,'slash');assert.equal(enemy.furnaceAction.strikes,1);

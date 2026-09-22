@@ -70,7 +70,7 @@ try{
     for(let i=0;i<34;i++)g.tick(.04);
     const animated=bone.quaternion.angleTo(before)>.001;
     for(let i=0;i<16;i++)g.tick(.04);
-    const expected=new g.THREE.Vector3(-6,0,-6).addScaledVector(dir,12);
+    const expected=new g.THREE.Vector3(-6,0,-6).addScaledVector(dir,e.furnaceAction.length);
     return {error:e.obj.position.distanceTo(expected),phase:e.furnaceAction.phase,animated};
   });assert.ok(charge.error<.01);assert.equal(charge.phase,'recovery');assert.equal(charge.animated,true);
   const forge=await page.evaluate(()=>{
@@ -127,6 +127,7 @@ try{
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
   const maceControl=await page.evaluate(()=>{
     const g=window.__game,e=g.enemies.find(e=>e.customBoss),profile=g.actors.HEROES.Knight.weapons[2];
+    g.hero.userData.profile=profile;
     g.furnaceCombat.cancel(e);e.obj.position.set(0,0,0);g.hero.position.set(0,0,10);
     e.hp=e.maxHp=100000;g.state.inv=100;g.state.shot=999;g.state.remaining=999;g.state.spawn=999;
     const strike=()=>{
