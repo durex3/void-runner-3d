@@ -196,7 +196,7 @@ export class GameView{
     const recovering=enemies.some(enemy=>enemy.type==='boss'&&!enemy.dead&&enemy.recovery>0);
     const furnaceBoss=enemies.find(e=>e.customBoss&&!e.dead),action=furnaceBoss?.furnaceAction;
     const ruinsBoss=enemies.find(e=>e.type==='boss'&&!e.customBoss&&!e.dead),volley=ruinsBoss?.rangedWindup;
-    const message=warning?'巨像践踏 · 危险区域':recovering?'首领收招中 · 反击时机':state.furnaceStatus||
+    const message=warning?'巨像践踏 · 危险区域':recovering?'首领恢复中 · 反击时机':state.furnaceStatus||
       (action?.phase==='warning'?(action.kind==='charge'?'冲锋预警 · 侧向避让':action.kind==='forge'?'地火召唤 · 离开圆圈':'重斩预警 · 绕到背后'):
       (volley?.pattern==='fan'?'预判扇射 · 侧向变向':volley?.pattern==='ring'?'环形弹幕 · 保持移动':''));
     const danger=this.$('#danger-notice');
