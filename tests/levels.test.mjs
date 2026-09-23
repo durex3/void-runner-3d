@@ -20,6 +20,33 @@ function bossFixture(){
   return {game,enemy,ai,strike};
 }
 
+test('greatsword can punish recovery after approach, including an existing cooldown',()=>{
+  // Isolated timing probe, not a human playtest: walk straight toward a recovering
+  // boss at base speed, stop at distance 3, and use the real attack queue/AI.
+  for(const kind of ['slash','charge','forge'])for(const rate of [1,1.6])for(const distance of [3,6,9,12])for(const cooling of [false,true]){
+    const {game,enemy,ai}=bossFixture(),profile=HEROES.Knight.weapons[1];
+    Object.assign(game.state,{rate,shot:cooling?profile.interval/rate:0});
+    game.hero.userData.profile=profile;game.hero.position.set(0,0,distance);
+    const hits=[];
+    const weapon=new WeaponCombat({...game,enemies:()=>[enemy],garden:{combos:new Set(),onShot(){}},
+      damage:()=>{if(enemy.furnaceAction?.phase==='recovery')hits.push(game.state.time)}});
+    ai.begin(enemy,kind);ai.recover(enemy,enemy.furnaceAction);
+    const duration=enemy.recovery,dt=1/120;
+    while(enemy.furnaceAction){
+      game.state.time+=dt;game.state.shot-=dt;
+      const delta=enemy.obj.position.clone().sub(game.hero.position),remaining=delta.length()-3;
+      if(remaining>0)game.hero.position.addScaledVector(delta.normalize(),Math.min(6*dt,remaining));
+      if(game.state.shot<=0)weapon.attack();
+      ai.step(enemy,dt);weapon.step(dt);
+    }
+    const earliest=Math.max(Math.max(0,distance-profile.range)/6,cooling?profile.interval/rate:0)+profile.delay/rate;
+    assert.ok(hits.length>0,`${kind}, rate ${rate}, distance ${distance}, cooling ${cooling}`);
+    assert.ok(Math.abs(hits[0]-earliest)<dt*3,`first impact ${hits[0]}, expected ${earliest}`);
+    assert.ok(hits[0]<duration);
+    weapon.reset();ai.reset();
+  }
+});
+
 test('black knight control indicators and slow expire after a mace hit',()=>{
   const {enemy,ai,strike}=bossFixture();strike();enemy.slow=.1;
   for(let i=0;i<20;i++)ai.step(enemy,.01);

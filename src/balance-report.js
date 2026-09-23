@@ -70,7 +70,10 @@ export function analyzeReports(input,{hero='all',chapter='all'}={}){
   const all=normalizeReports(input),reports=all.filter(report=>(hero==='all'||report.hero?.id===hero)&&(chapter==='all'||report.chapter===chapter));
   const totalDamage=reports.reduce((sum,report)=>sum+asNumber(report.totalDamage),0),weapons=aggregateEntries(reports,'weapons'),devices=aggregateEntries(reports,'devices');
   for(const item of [...weapons,...devices])item.damageShare=totalDamage?item.damage/totalDamage:0;
-  const comboIds=[...new Set(reports.flatMap(report=>Object.keys(report.combos||{}).concat(report.upgrades.map(item=>item.id).filter(Boolean))))];
+  // Attribute upgrades take effect immediately and have no trigger counter.
+  // Known IDs also support older reports that omitted upgrade.kind.
+  const isCombo=item=>item.kind==='combo'||(!item.kind&&Object.hasOwn(COMBO_LABELS,item.id));
+  const comboIds=[...new Set(reports.flatMap(report=>Object.keys(report.combos||{}).concat(report.upgrades.filter(isCombo).map(item=>item.id).filter(Boolean))))];
   const combos=comboIds.map(id=>({id,label:COMBO_LABELS[id]||id,runs:reports.filter(report=>report.upgrades.some(item=>item.id===id)).length,triggeredRuns:reports.filter(report=>asNumber(report.combos?.[id])>0).length,triggers:reports.reduce((sum,report)=>sum+asNumber(report.combos?.[id]),0)}));
   const damageSources={};for(const report of reports)for(const [source,value] of Object.entries(report.damageTaken||{}))damageSources[source]=(damageSources[source]||0)+asNumber(value);
   const heroBreakdown=[...new Set(reports.map(report=>report.hero?.id||'unknown'))].map(id=>{const rows=reports.filter(report=>(report.hero?.id||'unknown')===id);return {id,label:rows[0]?.hero?.label||id,runs:rows.length,winRate:rows.filter(report=>report.win).length/rows.length,averageDamage:average(rows.map(report=>asNumber(report.totalDamage))),averageBossTime:average(rows.map(report=>asNumber(report.boss?.duration))),averageDuration:average(rows.map(report=>asNumber(report.duration)))} });
