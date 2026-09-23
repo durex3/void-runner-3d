@@ -1,8 +1,8 @@
-import {chromium} from 'playwright';
+import {launchBrowser,testUrl} from './browser-harness.mjs';
 import assert from 'node:assert/strict';
 import {mkdir} from 'node:fs/promises';
 await mkdir('test-results/ranger-nature',{recursive:true});
-const browser=await chromium.launch({channel:'msedge',headless:true,args:['--use-angle=swiftshader','--enable-unsafe-swiftshader']});
+const browser=await launchBrowser({headless:true,args:['--use-angle=swiftshader','--enable-unsafe-swiftshader']});
 try{
   const page=await browser.newPage({viewport:{width:1280,height:800}}),errors=[];
   page.on('pageerror',e=>errors.push(e.message));
@@ -10,7 +10,7 @@ try{
   for(const [role,slot,mobile] of [['Ranger',0,false],['Ranger',1,false],['Ranger',2,false],['Druid',0,false],['Ranger',1,true],['Druid',0,true]]){
     await page.setViewportSize(mobile?{width:390,height:844}:{width:1280,height:800});
     const label=`${role}-${slot}${mobile?'-mobile':''}`;
-    await page.goto('http://127.0.0.1:5188/?test=1');
+    await page.goto(testUrl('/?test=1'));
     await page.waitForFunction(()=>window.__game&&document.body.dataset.effects==='loaded'&&document.body.dataset.nature==='loaded');
     await page.click(`[data-character="${role}"]`);await page.click('#start');
     await page.evaluate(slot=>{

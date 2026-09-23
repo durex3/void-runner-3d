@@ -1,11 +1,11 @@
-import {chromium} from 'playwright';
+import {launchBrowser,testUrl} from './browser-harness.mjs';
 import assert from 'node:assert/strict';
 import {writeFile} from 'node:fs/promises';
-const browser=await chromium.launch({channel:'msedge',headless:true,args:['--use-angle=swiftshader','--enable-unsafe-swiftshader']});
+const browser=await launchBrowser({headless:true,args:['--use-angle=swiftshader','--enable-unsafe-swiftshader']});
 try{
  const page=await browser.newPage({viewport:{width:1440,height:900}}),errors=[];
  page.on('pageerror',e=>errors.push(e.message));page.on('console',m=>{if(['error','warning'].includes(m.type())&&!m.text().includes('GPU stall'))errors.push(m.text())});
- await page.goto('http://127.0.0.1:5188/?test=1');await page.waitForFunction(()=>window.__game&&document.body.dataset.nature==='loaded');await page.click('[data-character="Knight"]');await page.click('#start');
+ await page.goto(testUrl('/?test=1'));await page.waitForFunction(()=>window.__game&&document.body.dataset.nature==='loaded');await page.click('[data-character="Knight"]');await page.click('#start');
  const defense=await page.evaluate(()=>{const g=__game;g.state.mode='paused';g.equip(0);g.state.hp=100;g.state.inv=0;g.hurt(10);const shield=g.state.hp;g.equip(1);g.state.inv=0;g.hurt(10);return {shield,noShield:g.state.hp,offhand:g.hero.userData.rig.offhand.children.length}});assert.deepEqual(defense,{shield:92,noShield:82,offhand:0});
  const interrupt=await page.evaluate(()=>{const g=__game;g.state.mode='paused';g.equip(2);g.state.inv=999;g.state.remaining=1;g.state.spawn=999;g.hero.position.set(0,0,0);g.spawnEnemy('spitter');const e=g.enemies.at(-1);e.obj.position.set(0,0,2);e.hp=1000;e.attack=.05;g.attack();g.combat.step(.26);const position=e.obj.position.clone();g.state.shot=999;g.state.mode='playing';g.tick(.1);g.state.mode='paused';return {stagger:e.stagger,moved:e.obj.position.distanceTo(position),shots:g.hazards.length,attack:e.attack,statusVisible:e.statusVfx.stagger.visible}});assert.ok(interrupt.stagger>0);assert.equal(interrupt.moved,0);assert.equal(interrupt.shots,0);assert.equal(interrupt.attack,.05);assert.equal(interrupt.statusVisible,true);
  const slowStatus=await page.evaluate(()=>{const g=__game,e=g.enemies.at(-1);e.stagger=0;e.slow=1.4;g.state.mode='playing';g.tick(.1);g.state.mode='paused';return {slow:e.slow,visible:e.statusVfx.slow.visible,staggerVisible:e.statusVfx.stagger.visible}});assert.ok(slowStatus.slow>1);assert.equal(slowStatus.visible,true);assert.equal(slowStatus.staggerVisible,false);

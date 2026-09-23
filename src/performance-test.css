@@ -1,0 +1,19 @@
+.performance-test #overlay,.performance-test #modal{display:none!important}
+#performance-panel{position:fixed;z-index:30;top:max(10px,env(safe-area-inset-top));right:max(10px,env(safe-area-inset-right));width:min(340px,calc(100vw - 20px));max-height:calc(100dvh - 20px);overflow:auto;background:#101820ee;border:1px solid #5e7681;border-radius:12px;color:#e8f2ef;box-shadow:0 10px 34px #0008;font:12px/1.45 ui-monospace,SFMono-Regular,Menlo,monospace;backdrop-filter:blur(10px)}
+#performance-panel summary{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center;padding:12px 14px;cursor:pointer;list-style:none;color:#f2cd86;font-weight:800}
+#performance-panel summary::-webkit-details-marker{display:none}
+#performance-panel summary::before{content:'PERF';font-size:9px;letter-spacing:2px;color:#8fb6b1;grid-column:1/-1}
+#performance-panel summary strong{color:#e8f2ef;font-size:11px;font-weight:600;text-align:right}
+#performance-panel .performance-body{padding:0 14px 14px;border-top:1px solid #314750}
+#performance-panel label{display:grid;gap:5px;margin-top:10px;color:#9fb8b5}
+#performance-panel select,#performance-panel button{width:100%;min-height:38px;border:1px solid #58717a;border-radius:7px;background:#20313a;color:#f2f6ed;padding:8px;font:inherit}
+#performance-panel button{cursor:pointer;font-weight:700}
+#performance-panel button:hover{filter:brightness(1.15)}
+#performance-panel .performance-primary{background:#d6ad65;color:#1d2b30;border-color:#f1cf8d}
+#performance-panel .performance-grid{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:8px}
+#performance-panel output{display:block;white-space:pre-wrap;margin-top:10px;padding:10px;border-radius:8px;background:#071015;color:#cfe4dd;line-height:1.65}
+#performance-panel .performance-status{color:#f0cb82;margin:9px 0 0;min-height:18px}
+#performance-panel .performance-note{margin:8px 0 0;color:#8fa7a5;font:11px/1.55 system-ui}
+#performance-panel a{display:inline-block;margin-top:9px;color:#f0cb82}
+.performance-test #hud{right:370px}
+@media(max-width:700px){#performance-panel{left:10px;right:10px;width:auto;max-height:72dvh}.performance-test #hud{right:16px;top:76px}.performance-test #garden-hud{top:205px}#performance-panel:not([open]){overflow:hidden}#performance-panel summary{padding:9px 12px}#performance-panel summary::before{display:none}}

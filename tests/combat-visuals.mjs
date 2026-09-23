@@ -1,11 +1,11 @@
-import {chromium} from 'playwright';
+import {launchBrowser,testUrl} from './browser-harness.mjs';
 import assert from 'node:assert/strict';
 import {writeFile} from 'node:fs/promises';
-const browser=await chromium.launch({channel:'msedge',headless:true,args:['--use-angle=swiftshader','--enable-unsafe-swiftshader']});
+const browser=await launchBrowser({headless:true,args:['--use-angle=swiftshader','--enable-unsafe-swiftshader']});
 try{
 const context=await browser.newContext({viewport:{width:1280,height:800},recordVideo:{dir:'test-results/motion',size:{width:1280,height:800}}});
 const page=await context.newPage(),errors=[];page.on('pageerror',e=>errors.push(e.message));
-await page.goto('http://127.0.0.1:5188/?test=1');await page.waitForFunction(()=>window.__game&&document.body.dataset.nature==='loaded');await page.click('#start');
+await page.goto(testUrl('/?test=1'));await page.waitForFunction(()=>window.__game&&document.body.dataset.nature==='loaded');await page.click('#start');
 await page.evaluate(()=>{__game.state.remaining=1;__game.state.spawn=999});
 await page.keyboard.down('d');await page.waitForFunction(()=>__game.hero.position.x>1);
 const pose=await page.evaluate(()=>({leg:__game.hero.userData.rig.legs[0].quaternion.toArray(),x:__game.hero.position.x}));

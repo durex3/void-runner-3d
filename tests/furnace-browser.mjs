@@ -1,13 +1,13 @@
-import {chromium} from 'playwright';
+import {launchBrowser,testUrl} from './browser-harness.mjs';
 import assert from 'node:assert/strict';
 import {mkdir,writeFile} from 'node:fs/promises';
 
 await mkdir('test-results',{recursive:true});
-const browser=await chromium.launch({channel:'msedge',headless:true,args:['--use-angle=swiftshader','--enable-unsafe-swiftshader','--enable-webgl']});
+const browser=await launchBrowser({headless:true,args:['--use-angle=swiftshader','--enable-unsafe-swiftshader','--enable-webgl']});
 const page=await browser.newPage({viewport:{width:1440,height:900}});
 const errors=[];page.on('pageerror',e=>errors.push(e.message));page.on('console',m=>{if(m.type()==='error')errors.push(m.text())});
 try{
-  await page.goto(process.env.BASE_URL||'http://127.0.0.1:5188/?test=1');
+  await page.goto(testUrl('/?test=1'));
   await page.waitForFunction(()=>window.__game, {timeout:60000});
   await page.evaluate(()=>window.__game.setManual(true));
   await page.check('[name="chapter"][value="furnace"]');

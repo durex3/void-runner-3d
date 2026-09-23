@@ -1,14 +1,14 @@
-import {chromium} from 'playwright';
+import {launchBrowser,testUrl} from './browser-harness.mjs';
 import {mkdir,writeFile} from 'node:fs/promises';
 import assert from 'node:assert/strict';
 await mkdir('test-results/assets',{recursive:true});
-const browser=await chromium.launch({channel:'msedge',headless:true,args:['--use-angle=swiftshader','--enable-unsafe-swiftshader']});
+const browser=await launchBrowser({headless:true,args:['--use-angle=swiftshader','--enable-unsafe-swiftshader']});
 const errors=[],report=[];
 try{
 const page=await browser.newPage({viewport:{width:1280,height:800}});
 page.on('pageerror',e=>errors.push(e.message));page.on('console',m=>{if(m.type()==='error')errors.push(m.text())});
 for(const role of ['Ranger','Engineer','Druid','Knight'])for(let slot=0;slot<(role==='Engineer'?2:3);slot++){
- await page.goto('http://127.0.0.1:5188/?test=1');await page.waitForFunction(()=>window.__game&&document.body.dataset.effects==='loaded'&&document.body.dataset.nature==='loaded');
+ await page.goto(testUrl('/?test=1'));await page.waitForFunction(()=>window.__game&&document.body.dataset.effects==='loaded'&&document.body.dataset.nature==='loaded');
  await page.click(`[data-character="${role}"]`);await page.click('#start');
  const result=await page.evaluate(({slot,role})=>{const g=__game;g.state.mode='paused';g.state.spawn=999;g.state.inv=999;g.combat.reset();g.effects.clear();g.equip(slot);g.hero.position.set(0,0,0);
  for(const [x,z] of [[0,role==='Knight'?2:7],[1,8],[-1,9]]){g.spawnEnemy('brute');const e=g.enemies.at(-1);e.obj.position.set(x,0,z);e.hp=10000;e.speed=0;}

@@ -1,11 +1,11 @@
-import {chromium} from 'playwright';
+import {launchBrowser,testUrl} from './browser-harness.mjs';
 import assert from 'node:assert/strict';
 import {writeFile} from 'node:fs/promises';
-const browser=await chromium.launch({channel:'msedge',headless:true,args:['--use-angle=swiftshader','--enable-unsafe-swiftshader']});
+const browser=await launchBrowser({headless:true,args:['--use-angle=swiftshader','--enable-unsafe-swiftshader']});
 try{
   const page=await browser.newPage({viewport:{width:1440,height:900}}),errors=[];
   page.on('pageerror',e=>errors.push(e.message));page.on('console',m=>{if(['error','warning'].includes(m.type())&&!m.text().includes('GPU stall'))errors.push(m.text())});
-  await page.goto('http://127.0.0.1:5188/?test=1');await page.waitForFunction(()=>window.__game&&document.body.dataset.nature==='loaded');
+  await page.goto(testUrl('/?test=1'));await page.waitForFunction(()=>window.__game&&document.body.dataset.nature==='loaded');
   assert.ok(await page.locator('[data-character="Knight"]').isEnabled());
   for(const name of ['Knight','Druid','Engineer','Ranger']){await page.click(`[data-character="${name}"]`);assert.equal(await page.evaluate(()=>__game.hero.userData.rig.name),name)}
   await page.click('#start');

@@ -1,12 +1,12 @@
-import {chromium} from 'playwright';
+import {launchBrowser,testUrl} from './browser-harness.mjs';
 import assert from 'node:assert/strict';
 
-const browser=await chromium.launch({channel:'chrome',headless:true,args:['--use-angle=swiftshader','--enable-unsafe-swiftshader','--enable-webgl']});
+const browser=await launchBrowser({headless:true,args:['--use-angle=swiftshader','--enable-unsafe-swiftshader','--enable-webgl']});
 const page=await browser.newPage({viewport:{width:1280,height:800}});
 const errors=[];
 page.on('pageerror',error=>errors.push(error.message));
 page.on('console',message=>{if(message.type()==='error')errors.push(message.text())});
-await page.goto('http://127.0.0.1:5188/?test=audio');
+await page.goto(testUrl('/?test=audio'));
 await page.waitForFunction(()=>window.__game&&document.body.dataset.nature==='loaded');
 assert.equal(await page.evaluate(()=>__game.audio.context),null);
 await page.click('#start');

@@ -1,13 +1,13 @@
-import {chromium} from 'playwright';
+import {launchBrowser,testUrl} from './browser-harness.mjs';
 import assert from 'node:assert/strict';
 import {mkdir} from 'node:fs/promises';
 
 await mkdir('test-results',{recursive:true});
-const browser=await chromium.launch({channel:'msedge',headless:true,args:['--use-angle=swiftshader','--enable-unsafe-swiftshader']});
+const browser=await launchBrowser({headless:true,args:['--use-angle=swiftshader','--enable-unsafe-swiftshader']});
 try{
   const page=await browser.newPage(),errors=[];
   page.on('pageerror',e=>errors.push(e.message));
-  await page.goto('http://127.0.0.1:5188/boss-test.html?test=1');
+  await page.goto(testUrl('/boss-test.html?test=1'));
   await page.waitForFunction(()=>window.__game?.bossTest);
   await page.evaluate(()=>window.__game.setManual(true));
   for(const [label,width,height] of [['desktop',1440,900],['mobile',390,844]]){

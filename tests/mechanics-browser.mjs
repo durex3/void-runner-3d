@@ -1,11 +1,11 @@
-import {chromium} from 'playwright';
+import {launchBrowser,testUrl} from './browser-harness.mjs';
 import assert from 'node:assert/strict';
 import {writeFile} from 'node:fs/promises';
-const browser=await chromium.launch({channel:'msedge',headless:true,args:['--use-angle=swiftshader','--enable-unsafe-swiftshader']});
+const browser=await launchBrowser({headless:true,args:['--use-angle=swiftshader','--enable-unsafe-swiftshader']});
 try{
  const page=await browser.newPage({viewport:{width:1280,height:800}}),errors=[];
  page.on('pageerror',e=>errors.push(e.message));page.on('console',m=>{if(m.type()==='error')errors.push(m.text())});
- await page.goto('http://127.0.0.1:5188/?test=1');await page.waitForFunction(()=>window.__game&&document.body.dataset.nature==='loaded');
+ await page.goto(testUrl('/?test=1'));await page.waitForFunction(()=>window.__game&&document.body.dataset.nature==='loaded');
  await page.click('[data-character="Engineer"]');await page.click('#start');await page.click('[data-weapon="1"]');
  const pending=await page.evaluate(()=>{const g=__game;g.state.mode='paused';g.state.inv=999;g.state.remaining=1;g.state.spawn=999;g.hero.position.set(0,0,0);g.spawnEnemy('brute');g.enemies.at(-1).obj.position.set(0,0,10);g.attack();return g.combat.pending.map(p=>p.delay)});
  assert.equal(pending.length,2);await page.waitForTimeout(250);assert.deepEqual(await page.evaluate(()=>__game.combat.pending.map(p=>p.delay)),pending);

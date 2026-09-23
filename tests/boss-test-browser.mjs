@@ -1,13 +1,13 @@
-import {chromium} from 'playwright';
+import {launchBrowser,testUrl} from './browser-harness.mjs';
 import assert from 'node:assert/strict';
 import {mkdir} from 'node:fs/promises';
 
 await mkdir('test-results',{recursive:true});
-const browser=await chromium.launch({channel:'msedge',headless:true,args:['--use-angle=swiftshader','--enable-unsafe-swiftshader']});
+const browser=await launchBrowser({headless:true,args:['--use-angle=swiftshader','--enable-unsafe-swiftshader']});
 const page=await browser.newPage({viewport:{width:1440,height:900}}),errors=[];
 page.on('pageerror',e=>errors.push(e.message));
 try{
-  await page.goto('http://127.0.0.1:5188/boss-test.html?test=1');
+  await page.goto(testUrl('/boss-test.html?test=1'));
   await page.waitForFunction(()=>window.__game?.bossTest);
   await page.evaluate(()=>window.__game.setManual(true));
   const initial=await page.evaluate(()=>{const g=window.__game;return {hero:g.hero.userData.rig.name,weapon:g.hero.userData.profile.model,rate:g.state.rate,wave:g.state.wave,enemies:g.enemies.length,boss:g.enemies[0].customBoss}});
@@ -64,7 +64,7 @@ try{
   await page.evaluate(()=>window.__game.render());
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
   await page.screenshot({path:'test-results/boss-test-mobile.png'});
-  await page.goto('http://127.0.0.1:5188/?test=1');
+  await page.goto(testUrl('/?test=1'));
   await page.waitForFunction(()=>window.__game);
   assert.equal(await page.locator('#boss-test-panel').count(),0);
   assert.equal(await page.evaluate(()=>window.__game.state.mode),'title');

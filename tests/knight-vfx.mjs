@@ -1,19 +1,19 @@
-import {chromium} from 'playwright';
+import {launchBrowser,testUrl} from './browser-harness.mjs';
 import assert from 'node:assert/strict';
 import {mkdir,writeFile} from 'node:fs/promises';
 
 await mkdir('test-results/knight-vfx',{recursive:true});
-const browser=await chromium.launch({channel:'msedge',headless:true,args:['--use-angle=swiftshader','--enable-unsafe-swiftshader','--enable-webgl']});
+const browser=await launchBrowser({headless:true,args:['--use-angle=swiftshader','--enable-unsafe-swiftshader','--enable-webgl']});
 try{
   const page=await browser.newPage({viewport:{width:1440,height:900}}),errors=[];
   page.on('pageerror',error=>errors.push(error.message));
   page.on('console',message=>{if(['error','warning'].includes(message.type())&&!message.text().includes('GPU stall'))errors.push(message.text())});
-  await page.goto('http://127.0.0.1:5188/?test=1');
+  await page.goto(testUrl('/?test=1'));
   await page.waitForFunction(()=>window.__game&&document.body.dataset.nature==='loaded'&&document.body.dataset.effects==='loaded');
   await page.click('[data-character="Knight"]');
   await page.click('#start');
   const textureState=await page.evaluate(()=>Object.fromEntries(Object.entries(__game.meleeVfx.textures).map(([key,texture])=>[key,{width:texture.image?.naturalWidth||texture.image?.width,height:texture.image?.naturalHeight||texture.image?.height}])));
-  assert.equal(Object.keys(textureState).length,14);
+  assert.deepEqual(Object.keys(textureState).sort(),['combatAtlas','combatHeavy','combatHit','combatMace','combatSword','dustHeavy','dustLight','impact','shockwave','slashHeavy','slashShield','warriorOne','warriorTwo']);
   assert.ok(Object.entries(textureState).filter(([key])=>!key.startsWith('combat')&&!key.startsWith('warrior')).every(([,texture])=>texture.width===512&&texture.height===512));
   assert.ok(textureState.combatAtlas.width===640&&textureState.combatAtlas.height===1856);
   assert.ok(textureState.warriorOne.width===256&&textureState.warriorOne.height===640);

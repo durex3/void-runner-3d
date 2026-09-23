@@ -1,13 +1,13 @@
-import {chromium} from 'playwright';
+import {launchBrowser,testUrl} from './browser-harness.mjs';
 import assert from 'node:assert/strict';
 import {mkdir} from 'node:fs/promises';
 
 await mkdir('test-results/heavy-sword/showcase',{recursive:true});
-const browser=await chromium.launch({channel:'msedge',headless:true,args:['--use-angle=swiftshader','--enable-unsafe-swiftshader']});
+const browser=await launchBrowser({headless:true,args:['--use-angle=swiftshader','--enable-unsafe-swiftshader']});
 try{
   const page=await browser.newPage({viewport:{width:1280,height:800},recordVideo:{dir:'test-results/heavy-sword/showcase',size:{width:1280,height:800}}});
   const errors=[];page.on('pageerror',error=>errors.push(error.message));
-  await page.goto('http://127.0.0.1:5188/?test=1');
+  await page.goto(testUrl('/?test=1'));
   await page.waitForFunction(()=>window.__game&&document.body.dataset.effects==='loaded');
   await page.click('[data-character="Knight"]');await page.click('#start');
   await page.evaluate(()=>{

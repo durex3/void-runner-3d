@@ -1,13 +1,13 @@
-import {chromium} from 'playwright';
+import {launchBrowser,testUrl} from './browser-harness.mjs';
 import assert from 'node:assert/strict';
 
-const browser=await chromium.launch({channel:'chrome',headless:true,args:['--use-angle=swiftshader','--enable-unsafe-swiftshader','--enable-webgl']});
+const browser=await launchBrowser({headless:true,args:['--use-angle=swiftshader','--enable-unsafe-swiftshader','--enable-webgl']});
 const context=await browser.newContext({viewport:{width:390,height:844},isMobile:true,hasTouch:true});
 const page=await context.newPage();
 const errors=[];
 page.on('pageerror',error=>errors.push(error.message));
 page.on('console',message=>{if(message.type()==='error')errors.push(message.text())});
-await page.goto('http://127.0.0.1:5188/?test=mobile-joystick');
+await page.goto(testUrl('/?test=mobile-joystick'));
 await page.waitForFunction(()=>window.__game&&document.body.dataset.nature==='loaded');
 assert.equal(await page.locator('#touch-stick').isVisible(),true);
 assert.equal(await page.locator('#touchdash').isVisible(),true);

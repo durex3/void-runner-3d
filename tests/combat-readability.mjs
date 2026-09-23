@@ -1,10 +1,10 @@
-import {chromium} from 'playwright';
+import {launchBrowser,testUrl} from './browser-harness.mjs';
 import assert from 'node:assert/strict';
 import {mkdir,writeFile} from 'node:fs/promises';
 
 const root='test-results/combat-readability';
 await mkdir(root,{recursive:true});
-const browser=await chromium.launch({channel:'msedge',headless:true,args:['--use-angle=swiftshader','--enable-unsafe-swiftshader']});
+const browser=await launchBrowser({headless:true,args:['--use-angle=swiftshader','--enable-unsafe-swiftshader']});
 const report={checks:[],scenes:[],observations:[],errors:[]};
 try{
   for(const [name,viewport] of Object.entries({desktop:{width:1280,height:800},mobile:{width:390,height:844}})){
@@ -12,7 +12,7 @@ try{
     const page=await context.newPage();
     page.on('pageerror',e=>report.errors.push(e.message));
     page.on('console',m=>{if(m.type()==='error')report.errors.push(m.text());});
-    await page.goto('http://127.0.0.1:5188/?test=1&scenario=crowd&manual=1');
+    await page.goto(testUrl('/?test=1&scenario=crowd&manual=1'));
     await page.waitForFunction(()=>window.__game?.lab&&document.body.dataset.nature);
     const load=options=>page.evaluate(options=>__game.lab.load({manual:true,...options}),options);
     const step=frames=>page.evaluate(frames=>__game.lab.step(frames),frames);
@@ -185,7 +185,7 @@ try{
     console.log(`PASS: ${name} mixed scenes, movement, dash, stomp timing, pause and reset`);
   }
   assert.deepEqual(report.errors,[]);
-  const page=await browser.newPage();await page.goto('http://127.0.0.1:5188/');
+  const page=await browser.newPage();await page.goto(testUrl('/'));
   await page.waitForFunction(()=>document.body.dataset.effects==='loaded');
   assert.equal(await page.evaluate(()=>!!window.__game),false,'normal game has no test API');
   report.passed=true;
