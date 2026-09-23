@@ -1,4 +1,5 @@
 import {COMBOS} from './garden.js';
+import {KNIGHT_UPGRADES} from './knight-upgrades.js';
 
 function shuffle(items,random=Math.random){
   for(let index=items.length-1;index>0;index--){
@@ -38,6 +39,14 @@ export function createUpgradeChoices({state,garden,heroName,random=Math.random})
     .filter(combo=>!garden.combos.has(combo.id)&&(combo.id!=='watering'||heroName==='Engineer'))
     .map(combo=>({...combo,kind:'combo',hint:COMBO_HINTS[combo.id]?.[heroName]||COMBO_HINTS[combo.id]?.default,apply:()=>garden.combos.add(combo.id)})),random);
   const upgrades=baseUpgrades(state);
+  if(heroName==='Knight'){
+    const knight=KNIGHT_UPGRADES.filter(upgrade=>!state[upgrade.id]).map(upgrade=>({...upgrade,kind:'weapon',apply:()=>{state[upgrade.id]=true}}));
+    if(knight.length){
+      const featured=knight.find(upgrade=>upgrade.id===KNIGHT_UPGRADES[state.loadout]?.id)||knight[0];
+      featured.recommended=true;
+      return [featured,...shuffle([...upgrades,...available,...knight.filter(upgrade=>upgrade!==featured)],random).slice(0,2)];
+    }
+  }
   if(!available.length)return shuffle(upgrades,random).slice(0,3);
   const priority=COMBO_PRIORITY[heroName]||[];
   available.sort((a,b)=>(priority.indexOf(a.id)+1||99)-(priority.indexOf(b.id)+1||99));

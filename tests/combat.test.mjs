@@ -3,6 +3,46 @@ import assert from 'node:assert/strict';
 import * as T from 'three';
 import {WeaponCombat} from '../src/combat.js';
 import {HEROES} from '../src/loadouts.js';
+import {armShieldCounter} from '../src/knight-upgrades.js';
+import {createGameState,resetRunState} from '../src/game-state.js';
+import {createUpgradeChoices} from '../src/upgrades.js';
+
+test('knight upgrades follow equipped weapon, do not repeat, and reset',()=>{
+ const state=createGameState(),garden={combos:new Set()};state.loadout=2;
+ let choices=createUpgradeChoices({state,garden,heroName:'Knight',random:()=>.5});
+ assert.equal(choices[0].id,'macePursuit');choices[0].apply();
+ choices=createUpgradeChoices({state,garden,heroName:'Knight',random:()=>.5});
+ assert.ok(choices.every(c=>c.id!=='macePursuit'));
+ assert.ok(createUpgradeChoices({state,garden,heroName:'Ranger'}).every(c=>c.kind!=='weapon'));
+ resetRunState(state);assert.equal(state.macePursuit,false);assert.equal(state.shieldCounterUntil,0);
+});
+
+test('shield counter requires damage, survives misses, expires and consumes once',()=>{
+ const s=setup('Knight',0);Object.assign(s.state,{shieldCounter:true,time:1});
+ armShieldCounter(s.state,s.hero.userData.profile,0);assert.equal(s.state.shieldCounterUntil,undefined);
+ armShieldCounter(s.state,s.hero.userData.profile,10);
+ s.combat.melee({profile:s.hero.userData.profile,damage:38,dir:new T.Vector3(0,0,1)});
+ assert.equal(s.state.shieldCounterUntil,4);
+ const e=s.enemy(2);s.combat.attack();s.step(.2);assert.equal(e.hp,943);
+ s.combat.attack();s.step(.2);assert.equal(e.hp,905);
+ armShieldCounter(s.state,s.hero.userData.profile,10);s.state.time=5;
+ s.combat.attack();s.step(.2);assert.equal(e.hp,867);
+});
+
+test('heavy sweep needs two in-cone targets and strengthens knockback',()=>{
+ const s=setup('Knight',1);s.state.heavySweep=true;const a=s.enemy(2),rear=s.enemy(-2);
+ const shot={profile:s.hero.userData.profile,damage:70,dir:new T.Vector3(0,0,1)};
+ s.combat.melee(shot);assert.equal(a.hp,930);assert.equal(a.push.length(),10);
+ const b=s.enemy(2,1);s.combat.melee(shot);
+ assert.equal(a.hp,846);assert.equal(b.hp,916);assert.equal(a.push.length(),13.5);assert.equal(rear.hp,1000);
+});
+
+test('mace pursuit checks pre-existing stagger and respects committed boss immunity',()=>{
+ const s=setup('Knight',2);s.state.macePursuit=true;const a=s.enemy(2),b=s.enemy(2,.2),boss=s.enemy(2,.3,'boss');
+ b.stagger=.2;boss.stagger=.2;boss.customBoss=true;boss.furnaceAction={phase:'warning'};
+ s.combat.melee({profile:s.hero.userData.profile,damage:52,dir:new T.Vector3(0,0,1)});
+ assert.equal(a.hp,948);assert.ok(Math.abs(b.hp-929.8)<1e-8);assert.equal(boss.hp,948);assert.equal(b.stagger,.45);
+});
 
 function setup(role,slot){
  const scene=new T.Scene(),hero=new T.Group(),state={damage:1,rate:1,shot:0},enemies=[],hits=[],pulses=[],links=[],meleeEvents=[];

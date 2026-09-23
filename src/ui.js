@@ -137,7 +137,7 @@ export class GameView{
   }
 
   showUpgrade(state,choices,onChoose){
-    const typeLabel=choice=>choice.kind==='combo'?'装置联动':choice.kind==='core'?'核心属性':choice.kind==='survival'?'生存强化':choice.kind==='mobility'?'机动强化':choice.kind==='utility'?'战场辅助':'遗迹祝福';
+    const typeLabel=choice=>choice.kind==='weapon'?'骑士武技':choice.kind==='combo'?'装置联动':choice.kind==='core'?'核心属性':choice.kind==='survival'?'生存强化':choice.kind==='mobility'?'机动强化':choice.kind==='utility'?'战场辅助':'遗迹祝福';
     this.elements.modal.innerHTML=`<div class="eyebrow">FIELD MODIFICATION</div><h2>遗迹祝福</h2><p>等级 ${state.level} · 选择一种力量，继续你的旅程</p><div id="choices">${choices.map((choice,index)=>`<button class="card ${choice.recommended?'recommended':''}" data-choice="${index}"><small>${typeLabel(choice)} / 0${index+1}${choice.recommended?' · 推荐':''}</small><div class="symbol">${choice.symbol}</div><h3>${choice.name}</h3><p>${choice.desc}</p>${choice.hint?`<span class="card-hint">${choice.hint}</span>`:''}</button>`).join('')}</div>`;
     this.elements.modal.classList.remove('hidden');
     this.app.querySelectorAll('[data-choice]').forEach(button=>button.onclick=()=>onChoose(choices[Number(button.dataset.choice)]));

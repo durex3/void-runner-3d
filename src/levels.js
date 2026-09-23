@@ -9,8 +9,29 @@ export const FURNACE_WAVES=[
   {count:12,interval:1.05,pool:['brute','brute','runner'],label:'突击先锋',grace:3},
   {count:15,interval:1,pool:['brute','runner','spitter'],label:'炉火法师',grace:3},
   {count:12,interval:1.1,pool:['brute','brute','spitter'],label:'守备换防',grace:5},
-  {count:21,interval:.85,pool:['brute','runner','spitter'],label:'双炉交替',grace:3},
-  {count:24,interval:.8,pool:['brute','runner','runner','spitter'],label:'要塞反扑',grace:3},
+  {count:21,interval:.85,pool:['brute','runner','spitter'],label:'双炉交替',grace:3,
+    // Three readable pushes: clustered infantry, staggered charges, then support.
+    formation:[
+      {type:'brute',offset:-.12,delay:.4},
+      {type:'brute',offset:0,delay:.4},
+      {type:'brute',offset:.12,delay:.4},
+      {type:'brute',offset:.24,delay:1.3},
+      {type:'runner',offset:-.3,delay:1.1},
+      {type:'runner',offset:.3,delay:1.2},
+      {type:'spitter',offset:0,delay:3.5},
+    ]},
+  {count:24,interval:.8,pool:['brute','runner','runner','spitter'],label:'要塞反扑',grace:3,
+    // Infantry fixes the front; flankers arrive separately, leaving the rear open.
+    formation:[
+      {type:'brute',offset:-.12,delay:.4},
+      {type:'brute',offset:0,delay:.4},
+      {type:'brute',offset:.12,delay:1.2},
+      {type:'runner',offset:-.85,delay:1.1},
+      {type:'runner',offset:.85,delay:1.1},
+      {type:'brute',offset:0,delay:.6},
+      {type:'runner',offset:-.65,delay:1.2},
+      {type:'spitter',offset:.2,delay:3.5},
+    ]},
   {count:15,interval:1.1,pool:['brute','spitter'],label:'王座前庭',grace:5},
   {count:6,interval:2,pool:['brute'],label:'熔炉统领',grace:5},
 ];

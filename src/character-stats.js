@@ -1,3 +1,5 @@
+import {KNIGHT_UPGRADES} from './knight-upgrades.js';
+
 function number(value,digits=2){
   return Number(value.toFixed(digits)).toString();
 }
@@ -57,7 +59,7 @@ export function buildCharacterStats({state,hero,role}){
     range:describeRange(profile),
     damageMultiplier:`×${number(state.damage,2)}`,
     rateMultiplier:`×${number(state.rate,2)}`,
-    mechanics:describeMechanics(profile,state.rate),
+    mechanics:[...describeMechanics(profile,state.rate),...KNIGHT_UPGRADES.filter(upgrade=>state[upgrade.id]&&upgrade.model===profile.model).map(upgrade=>`${upgrade.name}：${upgrade.desc}`)],
     note:'显示值包含局内属性升级与当前装备加成，不计未触发的装置联动和条件增伤。',
   };
 }

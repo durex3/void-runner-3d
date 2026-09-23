@@ -13,6 +13,37 @@ try{
   const initial=await page.evaluate(()=>{const g=window.__game;return {hero:g.hero.userData.rig.name,weapon:g.hero.userData.profile.model,rate:g.state.rate,wave:g.state.wave,enemies:g.enemies.length,boss:g.enemies[0].customBoss}});
   assert.deepEqual(initial,{hero:'Knight',weapon:'Skeleton_Mace',rate:1.6,wave:8,enemies:1,boss:true});
   const stored=await page.evaluate(()=>JSON.stringify(localStorage));
+  const pending=await page.evaluate(()=>{
+    const g=window.__game;g.equip(1);g.hero.position.set(0,0,0);g.enemies[0].obj.position.set(0,0,2);
+    g.attack();g.tick(0);
+    return {record:g.bossTest.meleeDiagnostics.at(-1),text:document.querySelector('#boss-test-diagnostics').textContent};
+  });
+  assert.equal(pending.record.hit,null);
+  assert.equal(pending.record.distance,undefined);
+  assert.match(pending.text,/0 命中 \/ 0 空挥.*等待结算/);
+  assert.doesNotMatch(pending.text,/NaN|undefined|→/);
+  const settled=await page.evaluate(()=>{
+    const g=window.__game;g.tick(g.hero.userData.profile.delay/g.state.rate+.01);
+    return {record:g.bossTest.meleeDiagnostics.at(-1),text:document.querySelector('#boss-test-diagnostics').textContent};
+  });
+  assert.equal(settled.record.hit,true);
+  assert.ok(Number.isFinite(settled.record.distance));
+  assert.match(settled.text,/1 命中 \/ 0 空挥.*→.*命中/);
+  assert.doesNotMatch(settled.text,/等待结算|NaN|undefined/);
+  const telemetry=await page.evaluate(()=>{
+    const g=window.__game;
+    g.state.inv=0;g.hurt(24,'boss-slash');
+    g.state.inv=0;g.hurt(22,'boss-charge');
+    g.state.inv=0;g.hurt(28,'boss-forge');
+    return g.telemetry.snapshot({state:g.state});
+  });
+  assert.deepEqual(telemetry.damageTaken,{'boss-slash':24,'boss-charge':22,'boss-forge':28});
+  const heavy=telemetry.weapons.find(w=>w.id==='sword_2handed');
+  assert.equal(heavy.projectiles,0);assert.equal(heavy.attacks,1);
+  assert.equal(heavy.attackRateMin,1.6);assert.equal(heavy.attackRateMax,1.6);
+  assert.equal(telemetry.finalMultipliers.attackRate,1.6);
+  await page.locator('#boss-test-reset').click();
+  assert.match(await page.locator('#boss-test-diagnostics').textContent(),/等待第一次攻击/);
   await page.locator('[name=rate]').selectOption('2');
   assert.equal(await page.evaluate(()=>window.__game.state.rate),1.6,'settings apply only on submit');
   await page.locator('[name=hero]').selectOption('Engineer');

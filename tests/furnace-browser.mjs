@@ -13,6 +13,28 @@ try{
   await page.check('[name="chapter"][value="furnace"]');
   await page.click('#start');
   assert.equal(await page.evaluate(()=>window.__game.state.chapter),'furnace');
+  const formation=await page.evaluate(()=>{
+    const g=window.__game;g.state.wave=5;g.beginWave();g.state.inv=999;g.state.shot=999;
+    const events=[];let elapsed=0,previous=0;
+    for(let i=0;i<800&&g.state.remaining>0;i++){
+      const remaining=g.state.remaining;g.tick(.05);elapsed+=.05;
+      if(g.state.remaining<remaining){
+        const enemy=g.enemies.at(-1);
+        events.push({type:enemy.type,gap:elapsed-previous,radius:Math.hypot(enemy.obj.position.x,enemy.obj.position.z)});
+        previous=elapsed;
+        // Isolate spawn scheduling from kills, enemy movement and player upgrades.
+        for(const e of g.enemies.splice(0))g.scene.remove(e.obj);
+      }
+    }
+    return {events,remaining:g.state.remaining};
+  });
+  assert.equal(formation.remaining,0);assert.equal(formation.events.length,21);
+  for(let group=0;group<3;group++){
+    assert.deepEqual(formation.events.slice(group*7,group*7+7).map(e=>e.type),['brute','brute','brute','brute','runner','runner','spitter']);
+    if(group>0)assert.ok(formation.events[group*7].gap>=3.49,'rest between pushes');
+  }
+  assert.ok(formation.events.every(e=>e.radius>19&&e.radius<=20.01),'spawn at arena perimeter');
+  await page.evaluate(()=>window.__game.start());
   const pixels=await page.evaluate(()=>{
     const g=window.__game,T=g.THREE,target=new T.WebGLRenderTarget(256,256),data=new Uint8Array(256*256*4);
     g.camera.position.set(25,29,31);g.camera.lookAt(0,0,0);g.renderer.setRenderTarget(target);g.renderer.render(g.scene,g.camera);

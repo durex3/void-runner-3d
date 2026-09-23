@@ -10,6 +10,7 @@ export class RunTelemetry{
   constructor(){this.reset()}
 
   reset({chapter='ruins',heroId='',heroLabel=''}={}){
+    this.testContext=null;
     this.runId=createRunId();this.chapter=chapter;this.heroId=heroId;this.heroLabel=heroLabel;this.weapons=new Map();this.devices=new Map();
     this.damageTaken={};this.upgrades=[];this.combos={};this.boss={startedAt:null,endedAt:null,label:'',damage:0};this.duration=0;this.finished=false;this.win=false;
     return this;
@@ -32,8 +33,13 @@ export class RunTelemetry{
     if(profile)this.weapon(profile).equippedTime+=dt;
   }
 
-  recordAttack(profile){
-    const entry=this.weapon(profile);entry.attacks++;entry.projectiles+=Math.max(1,Number(profile?.count)||1);
+  recordAttack(profile,{rate,projectiles}={}){
+    const entry=this.weapon(profile);entry.attacks++;
+    entry.projectiles+=projectiles??(['melee','nature','chain'].includes(profile?.effect)?0:Math.max(1,Number(profile?.count)||1));
+    if(Number.isFinite(rate)&&rate>0){
+      entry.attackRateMin=Math.min(entry.attackRateMin??rate,rate);
+      entry.attackRateMax=Math.max(entry.attackRateMax??rate,rate);
+    }
   }
 
   recordDamage(source={},amount=0,{boss=false}={}){
@@ -71,6 +77,8 @@ export class RunTelemetry{
     const totalDamage=round([...weapons,...devices].reduce((sum,entry)=>sum+entry.damage,0));
     const totalDamageTaken=round(Object.values(this.damageTaken).reduce((sum,value)=>sum+value,0));
     return {version:1,runId:this.runId,chapter:state.chapter||this.chapter,hero:{id:this.heroId,label:this.heroLabel},win:Boolean(win),duration,wave:state.wave||0,kills:state.kills||0,level:state.level||1,
+      ...(this.testContext?{testContext:{...this.testContext}}:{}),
+      finalMultipliers:{attackRate:state.rate??1,damage:state.damage??1},
       totalDamage,totalDamageTaken,weapons,devices,damageTaken:Object.fromEntries(Object.entries(this.damageTaken).map(([key,value])=>[key,round(value)])),upgrades:this.upgrades.map(item=>({...item})),combos:{...this.combos},
       boss:{label:this.boss.label,duration:bossDuration,damage:round(this.boss.damage)},deployments:garden.stats?.planted||0,deviceKills:garden.stats?.kills||0,companions:garden.buddies?.length||0};
   }

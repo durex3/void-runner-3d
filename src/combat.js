@@ -1,9 +1,10 @@
 import * as T from 'three';
 import {projectile,beam} from './projectiles.js';
+import {knightMeleeBonus} from './knight-upgrades.js';
 
 // Combat simulation is independent of input/render timing. No wall-clock timers.
 export class WeaponCombat{
-  constructor({scene,hero,state,enemies,damage,garden,onFire=()=>{},effect=()=>{},onMeleeImpact=()=>{},onHit=()=>{}}){Object.assign(this,{scene,hero,state,enemies,damage,garden,onFire,effect,onMeleeImpact,onHit});this.bullets=[];this.pending=[]}
+  constructor({scene,hero,state,enemies,damage,garden,onFire=()=>{},effect=()=>{},onMeleeImpact=()=>{},onHit=()=>{},onMeleeDiagnostic=()=>{}}){Object.assign(this,{scene,hero,state,enemies,damage,garden,onFire,effect,onMeleeImpact,onHit,onMeleeDiagnostic});this.bullets=[];this.pending=[]}
   reset(){for(const b of this.bullets){this.scene.remove(b.obj);b.obj.userData.dispose?.();}this.bullets.length=0;this.pending.length=0;this.swing=null;for(const e of this.enemies())delete e.push}
   cancelBurst(){this.pending=this.pending.filter(p=>!['burst','melee'].includes(p.kind));this.swing=null}
   targets(){return this.enemies().filter(e=>!e.dead&&!e.stunned)}
@@ -15,7 +16,11 @@ export class WeaponCombat{
     const shot={profile,damage:profile.damage*this.state.damage,dir,knocked:new Set()};
     this.state.shot=profile.interval/this.state.rate;this.garden.onShot(profile.type);
     if(profile.effect==='melee'){
-      this.onFire(profile);this.swing={dir:dir.clone(),time:profile.interval/this.state.rate};this.pending.push({kind:'melee',delay:profile.delay/this.state.rate,shot});
+      this.onFire(profile);this.swing={dir:dir.clone(),time:profile.interval/this.state.rate};
+      shot.target=target;shot.startedAt=this.state.time;shot.startDistance=target.obj.position.distanceTo(this.hero.position);
+      shot.startPhase=target.furnaceAction?.phase||'none';
+      this.onMeleeDiagnostic({phase:'start',profile,target,time:this.state.time,distance:shot.startDistance,bossPhase:shot.startPhase});
+      this.pending.push({kind:'melee',delay:profile.delay/this.state.rate,shot});
     }else if(profile.effect==='nature'){
       const center=target.obj.position.clone();this.onFire(profile,{target:center.clone()});this.garden.pulse(center,0,profile.radius,profile.delay);
       this.pending.push({kind:'impact',delay:profile.delay,center,shot});
@@ -32,7 +37,7 @@ export class WeaponCombat{
     return true;
   }
   emit(shot){
-    const p=shot.profile;this.onFire(p);
+    const p=shot.profile;this.onFire(p,{projectiles:Math.min(p.count,Math.max(0,160-this.bullets.length))});
     for(let i=0;i<p.count&&this.bullets.length<160;i++){
       const dir=shot.dir.clone().applyAxisAngle(new T.Vector3(0,1,0),p.effect==='shotgun'?(i-(p.count-1)/2)*.14:0),v=dir.multiplyScalar(p.speed);
       const obj=projectile(this.hero.position.clone().setY(1),v,p.type,false,p.effect);this.scene.add(obj);
@@ -41,7 +46,23 @@ export class WeaponCombat{
   }
   hit(e,amount,profile,electric=false,kind='projectile'){if(e.dead||e.stunned)return;const bonus=electric&&this.garden.combos.has('snare')&&e.slow>0?1.7:1;this.damage(e,amount*bonus,{weapon:profile.type,weaponLabel:profile.label,model:profile.model});this.onHit({profile,enemy:e,position:e.obj.position.clone(),kind:electric?'electric':kind})}
   impact(p){let affected=0;for(const e of this.targets()){if(e.obj.position.distanceTo(p.center)>p.shot.profile.radius)continue;e.slow=Math.max(e.slow||0,p.shot.profile.slow);affected++;this.hit(e,p.shot.damage,p.shot.profile,false,'nature')}this.garden.pulse(p.center,0,p.shot.profile.radius,.2);this.onHit({profile:p.shot.profile,position:p.center.clone(),kind:'nature-area',affected})}
-  melee(shot){const p=shot.profile,hits=[],targets=[];for(const e of this.targets()){const delta=e.obj.position.clone().sub(this.hero.position).setY(0);if(delta.length()>p.range)continue;if(delta.lengthSq()>1e-8&&delta.normalize().dot(shot.dir)<Math.cos(p.arc*Math.PI/360))continue;hits.push(e.obj.position.clone());targets.push(e);this.hit(e,shot.damage,p);if(p.knock)e.push=shot.dir.clone().multiplyScalar(p.knock*(e.type==='boss'?.15:1));if(p.stagger&&!(e.customBoss&&e.furnaceAction))e.stagger=Math.max(e.stagger||0,p.stagger*(e.type==='boss'?.2:1))}this.onMeleeImpact({profile:p,origin:this.hero.position.clone(),direction:shot.dir.clone(),hits,targets})}
+  melee(shot){
+    const p=shot.profile,hits=[],targets=this.targets().filter(e=>{
+      const delta=e.obj.position.clone().sub(this.hero.position).setY(0),distance=delta.length();
+      return distance<=p.range&&(distance<=1e-8||delta.normalize().dot(shot.dir)>=Math.cos(p.arc*Math.PI/360));
+    });
+    const bonus=knightMeleeBonus(this.state,p,targets);
+    for(const e of targets){
+      hits.push(e.obj.position.clone());
+      const pursuit=bonus.pursuit&&e.stagger>0&&!(e.customBoss&&e.furnaceAction)?1.35:1;
+      this.hit(e,shot.damage*bonus.damage*pursuit,p,false,'melee');
+      if(p.knock)e.push=shot.dir.clone().multiplyScalar(p.knock*bonus.knock*(e.type==='boss'?.15:1));
+      if(p.stagger&&!(e.customBoss&&e.furnaceAction))e.stagger=Math.max(e.stagger||0,p.stagger*(e.type==='boss'?.2:1));
+    }
+    const target=shot.target,delta=target?.obj.position.clone().sub(this.hero.position).setY(0),distance=delta?.length()??Infinity;
+    let reason='hit';if(!targets.includes(target)){if(!target||target.dead||target.stunned)reason='target-unavailable';else if(distance>p.range)reason='out-of-range';else if(distance>1e-8&&delta.normalize().dot(shot.dir)<Math.cos(p.arc*Math.PI/360))reason='outside-arc';else reason='target-unavailable'}
+    this.onMeleeDiagnostic({phase:'result',profile:p,target,time:this.state.time,distance,startedAt:shot.startedAt,startDistance:shot.startDistance,bossPhase:target?.furnaceAction?.phase||'none',hit:reason==='hit',reason});
+    this.onMeleeImpact({profile:p,origin:this.hero.position.clone(),direction:shot.dir.clone(),hits,targets});}
   step(dt){
     if(this.swing){this.swing.time-=dt;if(this.swing.time<=0)this.swing=null}
     const ready=[];this.pending=this.pending.filter(p=>{p.delay-=dt;if(p.delay<=0){ready.push(p);return false}return true});

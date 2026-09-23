@@ -18,9 +18,10 @@ export function installBossTest(game){
     </form><p>设置在重开后生效。无小怪、装置和升级；不会写入正式纪录。</p></details>
     <div class="boss-test-grid"><button id="boss-test-reset">原配置重开</button><button id="boss-test-pause">暂停 / 继续</button></div>
     <output id="boss-test-status" aria-live="off"></output>
+    <output id="boss-test-diagnostics" aria-live="polite"></output>
     <p>WASD 移动 · 空格冲刺 · 1/2/3 换武器</p><a href="/">返回正式游戏</a>`;
   document.body.append(panel);
-  const form=panel.querySelector('form'),field=name=>form.elements.namedItem(name),status=panel.querySelector('output');
+  const form=panel.querySelector('form'),field=name=>form.elements.namedItem(name),status=panel.querySelector('#boss-test-status'),diagnostics=panel.querySelector('#boss-test-diagnostics');
   const weapons=()=>{field('weapon').innerHTML=HEROES[field('hero').value].weapons.map((w,i)=>`<option value="${i}">${w.label}</option>`).join('')};
   field('hero').value='Knight';weapons();field('weapon').value='2';field('rate').value='1.6';
   field('hero').addEventListener('change',weapons);
@@ -36,6 +37,18 @@ export function installBossTest(game){
       action?({warning:'攻击预警',attack:'攻击中',forge:'召唤地火',recovery:'收招'})[action.phase]:boss?.recovery>0?'收招':'追击 / 等待出招';
     const text=`${config.invincible?'无敌测试':'正常受伤'} · ${game.hero.userData.profile.label}\n${phase} · ${game.state.time.toFixed(1)} 秒\nBoss ${Math.ceil(Math.max(0,boss?.hp||0))} / ${boss?.maxHp||0}\n命中 ${hits} 次 · 实际掉血 ${damageTaken.toFixed(0)}`;
     if(text!==lastText){status.textContent=text;lastText=text}
+    const rows=game.state.bossStats?.meleeDiagnostics||[],last=rows.at(-1);
+    const distance=value=>Number.isFinite(value)?`${value.toFixed(1)}m`:'未知';
+    let summary='重剑诊断：等待第一次攻击';
+    if(last){
+      summary=`重剑诊断：${rows.filter(row=>row.hit===true).length} 命中 / ${rows.filter(row=>row.hit===false).length} 空挥 · 最近 ${distance(last.startDistance)}`;
+      if(!Number.isFinite(last.impactDelay))summary+=' · 等待结算';
+      else{
+        const result=last.hit?'命中':({'out-of-range':'超出范围','outside-arc':'不在扇形','target-unavailable':'目标不可用'}[last.reason]||last.reason||'未知');
+        summary+=` → ${distance(last.distance)} · ${result} · ${last.impactDelay.toFixed(2)}s`;
+      }
+    }
+    diagnostics.textContent=summary;
   };
   const load=()=>{
     game.returnToTitle();game.chooseLevel(config.boss);game.chooseHero(config.hero);originalStart();
@@ -50,10 +63,10 @@ export function installBossTest(game){
   game.updateWaveSpawning=()=>{if(game.state.shot<=0)game.attack()};
   game.advanceWaveIfCleared=()=>{if(boss?.dead&&game.state.mode==='playing')game.finish(true)};
   game.levelUp=()=>{};
-  game.hurt=amount=>{
+  game.hurt=(amount,source='other')=>{
     if(game.state.mode!=='playing')return;
     if(config.invincible){if(game.state.inv<=0){hits++;game.state.inv=.65}return}
-    const before=game.state.hp;originalHurt(amount);
+    const before=game.state.hp;originalHurt(amount,source);
     if(game.state.hp<before){hits++;damageTaken+=before-game.state.hp}
   };
   game.tick=dt=>{originalTick(dt);render()};
@@ -75,5 +88,5 @@ export function installBossTest(game){
     render();
   };
   form.requestSubmit();
-  if(window.__game)window.__game.bossTest={reset:load,get config(){return {...config}},get hits(){return hits}};
+  if(window.__game)window.__game.bossTest={reset:load,get config(){return {...config}},get hits(){return hits},get meleeDiagnostics(){return [...(game.state.bossStats?.meleeDiagnostics||[])]}};
 }

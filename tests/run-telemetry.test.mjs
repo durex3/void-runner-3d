@@ -2,6 +2,24 @@ import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {RunTelemetry} from '../src/run-telemetry.js';
 
+test('attack rates and actual projectile counts distinguish melee and spells',()=>{
+  const telemetry=new RunTelemetry();
+  for(const effect of ['melee','nature','chain']){
+    telemetry.recordAttack({model:effect,effect},{rate:2});
+    telemetry.recordAttack({model:effect,effect},{rate:3});
+  }
+  telemetry.recordAttack({model:'shotgun',count:6},{rate:1,projectiles:2});
+  telemetry.recordAttack({model:'shotgun',count:6},{rate:1,projectiles:0});
+  const report=telemetry.snapshot({state:{rate:3,damage:1.5}});
+  for(const id of ['melee','nature','chain']){
+    const weapon=report.weapons.find(w=>w.id===id);
+    assert.equal(weapon.attacks,2);assert.equal(weapon.projectiles,0);
+    assert.equal(weapon.attackRateMin,2);assert.equal(weapon.attackRateMax,3);
+  }
+  assert.equal(report.weapons.find(w=>w.id==='shotgun').projectiles,2);
+  assert.deepEqual(report.finalMultipliers,{attackRate:3,damage:1.5});
+});
+
 test('run telemetry aggregates actual weapon and device outcomes',()=>{
   const telemetry=new RunTelemetry().reset({chapter:'furnace',heroId:'Druid',heroLabel:'德鲁伊'});
   const weapon={model:'wand',label:'聚能魔杖',count:1};

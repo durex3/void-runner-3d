@@ -22,6 +22,7 @@ import {LEVELS,FURNACE_WAVES,FurnaceCycle} from './levels.js';
 import {createFurnaceWorld} from './furnace-world.js';
 import {FurnaceCombat} from './furnace-combat.js';
 import {RunTelemetry} from './run-telemetry.js';
+import {armShieldCounter} from './knight-upgrades.js';
 
 const MELEE_FEEDBACK={
   sword_1handed:{freeze:.025,shake:.035,reaction:.68},
@@ -109,10 +110,11 @@ export class RelicWorkshopGame{
     }});
     this.combat=new WeaponCombat({
       scene:this.scene,hero:this.hero,state:this.state,enemies:()=>this.enemies,damage:(...args)=>this.damageEnemy(...args),garden:this.garden,
-      onFire:(profile,context)=>{this.telemetry.recordAttack(profile);Actors.kickActor(this.hero,this.state.rate);this.meleeVfx.beginSwing(this.hero);const direction=new T.Vector3(Math.sin(this.hero.rotation.y),0,Math.cos(this.hero.rotation.y));this.remoteVfx.fire(profile,this.hero.position,direction,context);this.audio.play([600,180,850,240][profile.type],.07,profile.type===1?'sawtooth':'triangle',.018)},
+      onFire:(profile,context)=>{this.telemetry.recordAttack(profile,{rate:this.state.rate,projectiles:context?.projectiles});Actors.kickActor(this.hero,this.state.rate);this.meleeVfx.beginSwing(this.hero);const direction=new T.Vector3(Math.sin(this.hero.rotation.y),0,Math.cos(this.hero.rotation.y));this.remoteVfx.fire(profile,this.hero.position,direction,context);this.audio.play([600,180,850,240][profile.type],.07,profile.type===1?'sawtooth':'triangle',.018)},
       effect:(object,life)=>this.effects.add(object,life,{fixed:true,cleanup:o=>o.userData.dispose?.()}),
       onHit:event=>{this.remoteVfx.hit(event.profile,event.position,event.kind);if(event.kind==='nature-area'&&event.profile.slow&&event.affected){const percent=Math.round((1-.55)*100);this.showMechanicOnce('druid-slow',`德鲁伊法杖 · 范围内目标减速 ${percent}% · 持续 ${event.profile.slow.toFixed(1)} 秒`) }if(event.profile.effect==='pierce')this.showMechanicOnce('ranger-pierce','猎手长弓 · 穿透最多 3 个目标');if(event.kind==='shotgun-close')this.showMechanicOnce('shotgun-close','炼金霰弹 · 近距离命中伤害更高');if(event.profile.effect==='chain')this.showMechanicOnce('druid-chain','雷鸣法杖 · 命中后连锁附近敌人');if(event.kind==='splash')this.showMechanicOnce('druid-splash','聚能魔杖 · 命中后产生范围溅射')},
       onMeleeImpact:event=>{this.meleeVfx.play({...event,actor:this.hero});this.applyMeleeFeedback(event);if(event.profile.knock&&event.targets.length)this.showMechanicOnce('knight-knock',`双手剑 · 命中并击退 ${event.targets.length} 个目标`);if(event.profile.stagger&&event.targets.length)this.showMechanicOnce('knight-stagger','震击钉锤 · 命中后使普通敌人硬直')},
+      onMeleeDiagnostic:event=>{const stats=this.state.bossStats;if(!stats||!event.target?.customBoss)return; if(event.phase==='start'){stats.meleeDiagnostics.push({time:event.time,startedAt:event.time,startDistance:event.distance,startPhase:event.bossPhase,weapon:event.profile.label,hit:null})}else{const item=stats.meleeDiagnostics.at(-1);if(item){Object.assign(item,{time:event.time,distance:event.distance,hit:event.hit,reason:event.reason,bossPhase:event.bossPhase,impactDelay:event.time-item.startedAt})}}},
     });
     this.lastFrame=performance.now();
     this.uiElapsed=0;
@@ -220,6 +222,7 @@ export class RelicWorkshopGame{
     if(this.state.chapter==='furnace'){
       const wave=FURNACE_WAVES[this.state.wave-1];
       this.state.remaining=wave.count;this.state.spawn=wave.grace;this.state.waveTime=0;
+      this.furnaceFormationAngle=null;
       this.furnaceCycle.reset(wave.grace+2);
       if([2,4,6].includes(this.state.wave))this.spawnEnemy(this.state.wave===4?'runner':'brute',true);
       this.view.showToast(`第 ${this.state.wave} 波 · ${wave.label}`);
@@ -233,10 +236,10 @@ export class RelicWorkshopGame{
     if(this.state.wave===8)this.spawnEnemy('boss');
   }
 
-  spawnEnemy(force,elite=false){
+  spawnEnemy(force,elite=false,spawnAngle){
     const furnace=this.state.chapter==='furnace',pool=FURNACE_WAVES[this.state.wave-1].pool;
     const type=force||(furnace?pool[Math.floor(Math.random()*pool.length)]:(this.state.wave>2&&Math.random()<.27?'spitter':Math.random()<.3?'runner':'brute'));
-    const angle=Math.random()*Math.PI*2;
+    const angle=spawnAngle??Math.random()*Math.PI*2;
     const object=Actors.createCreature(furnace&&type==='boss'?'blackknight':elite&&type==='brute'?'necromancer':type);
     if(furnace&&type!=='boss')Actors.styleFurnaceCreature(object,type);
     object.position.set(Math.cos(angle)*20,0,Math.sin(angle)*20);
@@ -246,7 +249,7 @@ export class RelicWorkshopGame{
     const hp=elite?150+this.state.wave*15:type==='boss'?1500:type==='runner'?25:45+this.state.wave*5;
     const enemy={obj:object,type,elite,stunned:false,slow:0,hp,maxHp:hp,size,speed:type==='boss'?1.1:type==='runner'?3.5:1.6+this.state.wave*.06,attack:1.5};
     enemy.customBoss=furnace&&type==='boss';
-    if(enemy.customBoss){enemy.size=1.3;enemy.hp=enemy.maxHp=2000;object.position.set(0,0,-16);this.state.bossStats={startedAt:this.state.time,damageByWeapon:{},damageByDevice:{},damageTaken:0,damageSources:{},actions:{}};this.telemetry.startBoss(this.state.time,'黑骑士')}
+    if(enemy.customBoss){enemy.size=1.3;enemy.hp=enemy.maxHp=2000;object.position.set(0,0,-16);this.state.bossStats={startedAt:this.state.time,damageByWeapon:{},damageByDevice:{},damageTaken:0,damageSources:{},actions:{},meleeDiagnostics:[]};this.telemetry.startBoss(this.state.time,'黑骑士')}
     else if(type==='boss')this.telemetry.startBoss(this.state.time,'骸骨巨像');
     this.effects.attachEnemyStatus(enemy);
     this.enemies.push(enemy);
@@ -328,6 +331,7 @@ export class RelicWorkshopGame{
     if(reduction<1){this.showMechanicOnce('knight-shield','守卫剑盾 · 受到伤害减少 20%');const facing=new T.Vector3(Math.sin(this.hero.rotation.y),0,Math.cos(this.hero.rotation.y));this.effects.guardFlash(this.hero.position,facing)}
     amount*=reduction;
     const actual=Math.min(this.state.hp,amount);
+    armShieldCounter(this.state,this.hero.userData.profile,actual);
     this.telemetry.recordDamageTaken(source,actual);
     if(this.state.bossStats&&actual>0){this.state.bossStats.damageTaken+=actual;this.state.bossStats.damageSources[source]=(this.state.bossStats.damageSources[source]||0)+actual}
     this.state.hp=Math.max(0,this.state.hp-amount);
@@ -433,7 +437,20 @@ export class RelicWorkshopGame{
 
   updateWaveSpawning(dt){
     this.state.spawn-=dt;
-    if(this.state.remaining>0&&this.state.spawn<=0){this.spawnEnemy();this.state.remaining--;this.state.spawn=this.state.chapter==='furnace'?FURNACE_WAVES[this.state.wave-1].interval:Math.max(.4,1.1-this.state.wave*.06)}
+    if(this.state.remaining>0&&this.state.spawn<=0){
+      const wave=this.state.chapter==='furnace'?FURNACE_WAVES[this.state.wave-1]:null;
+      const index=wave?wave.count-this.state.remaining:0;
+      const formation=wave?.formation,slot=formation&&index%formation.length,entry=formation?.[slot];
+      if(entry){
+        // Each group approaches from one side, away from the hero's current edge.
+        // Lock that direction for the entire group so movement cannot scatter it.
+        if(slot===0||this.furnaceFormationAngle==null)this.furnaceFormationAngle=
+          this.hero.position.lengthSq()>1?Math.atan2(this.hero.position.z,this.hero.position.x)+Math.PI:Math.random()*Math.PI*2;
+        this.spawnEnemy(entry.type,false,this.furnaceFormationAngle+entry.offset);
+      }else this.spawnEnemy();
+      this.state.remaining--;
+      this.state.spawn=entry?.delay??wave?.interval??Math.max(.4,1.1-this.state.wave*.06);
+    }
     if(this.state.shot<=0)this.attack();
   }
 
