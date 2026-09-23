@@ -143,17 +143,28 @@ export class GameView{
     this.app.querySelectorAll('[data-choice]').forEach(button=>button.onclick=()=>onChoose(choices[Number(button.dataset.choice)]));
   }
 
-  showFinish({win,state,garden,best,bossStats,onRestart,onChangeHero,onNext}){
+  showFinish({win,state,garden,best,bossStats,runReport,onRestart,onChangeHero,onNext}){
     const bossDamage=Object.values(bossStats?.damageByWeapon||{}).reduce((a,b)=>a+b,0)+Object.values(bossStats?.damageByDevice||{}).reduce((a,b)=>a+b,0);
     const damageParts=[...Object.entries(bossStats?.damageByWeapon||{}),...Object.entries(bossStats?.damageByDevice||{})].map(([label,value])=>`${label} ${value.toFixed(0)}`).join(' · ');
     const sourceLabels={'boss-slash':'重斩','boss-charge':'冲锋','boss-forge':'锁定地火','boss-projectile':'Boss 弹幕','furnace-vent':'炉栅地火','boss-contact':'Boss 接触','enemy-contact':'小怪接触','enemy-projectile':'敌方弹幕',other:'其他'};
     const sourceParts=Object.entries(bossStats?.damageSources||{}).map(([label,value])=>`${sourceLabels[label]||label} ${value.toFixed(0)}`).join(' · ');
     const bossLine=bossStats?.startedAt!==undefined?`<br>Boss 战 ${Math.max(0,state.time-bossStats.startedAt).toFixed(1)} 秒 · Boss 伤害 ${bossDamage.toFixed(0)} · 受到伤害 ${bossStats.damageTaken.toFixed(0)}${damageParts?`<br>${damageParts}`:''}${sourceParts?`<br>掉血来源：${sourceParts}`:''}`:'';
-    this.elements.modal.innerHTML=`<div class="eyebrow">${win?'ZONE SECURED':'SIGNAL LOST'}</div><h2>${win?'遗迹已守住':'行动中止'}</h2><p>${win?'你击败了骸骨巨像，遗迹工坊得以保存。':'试试不同的武器和升级组合，再来一局吧！'}</p><p>抵达第 ${state.wave} 波 · 击败 ${state.kills} · 等级 ${state.level}<br>部署 ${garden.stats.planted} 件 · 装置击杀 ${garden.stats.kills} · 联动触发 ${garden.stats.combos} 次 · 伙伴 ${garden.buddies.length}<br>存活 ${Math.floor(state.time)} 秒 · 最佳 ${best} 击败${bossLine}</p><button id="restart" class="primary">再来一局 →</button><button id="change-hero" class="primary">更换角色</button>`;
+    const report=runReport||{};
+    const comboNames=Object.fromEntries(this.combos.map(combo=>[combo.id,combo.name]));
+    const weaponRows=(report.weapons||[]).map(item=>`<tr><td>${item.label}</td><td>${item.equippedTime.toFixed(1)}s</td><td>${item.attacks}</td><td>${item.hits}</td><td>${item.damage.toFixed(0)}</td><td>${item.kills}</td></tr>`).join('')||'<tr><td colspan="6">暂无武器数据</td></tr>';
+    const deviceRows=(report.devices||[]).map(item=>`<tr><td>${item.label}</td><td>${item.damage.toFixed(0)}</td><td>${item.hits}</td><td>${item.kills}</td></tr>`).join('')||'<tr><td colspan="4">暂无装置数据</td></tr>';
+    const damageRows=Object.entries(report.damageTaken||{}).map(([key,value])=>`<li>${sourceLabels[key]||key}：${Number(value).toFixed(0)}</li>`).join('')||'<li>暂无掉血</li>';
+    const upgradeRows=(report.upgrades||[]).map(item=>`<li>Lv.${item.level} · ${item.name}</li>`).join('')||'<li>未选择升级</li>';
+    const comboRows=Object.entries(report.combos||{}).map(([key,value])=>`<li>${comboNames[key]||key}：${value} 次</li>`).join('')||'<li>未触发联动</li>';
+    const detail=`<details class="run-report-details"><summary>查看构筑平衡报告</summary><div class="run-report-grid"><section><h3>武器</h3><div class="run-report-table-wrap"><table><thead><tr><th>武器</th><th>持有</th><th>攻击</th><th>命中</th><th>伤害</th><th>击杀</th></tr></thead><tbody>${weaponRows}</tbody></table></div></section><section><h3>装置</h3><div class="run-report-table-wrap"><table><thead><tr><th>装置</th><th>伤害</th><th>命中</th><th>击杀</th></tr></thead><tbody>${deviceRows}</tbody></table></div></section><section><h3>掉血来源 · ${Number(report.totalDamageTaken||0).toFixed(0)}</h3><ul>${damageRows}</ul></section><section><h3>升级选择</h3><ul>${upgradeRows}</ul></section><section><h3>联动触发</h3><ul>${comboRows}</ul></section><section><h3>Boss 战</h3><p>${report.boss?.label||'未进入 Boss 战'} · ${Number(report.boss?.duration||0).toFixed(1)} 秒 · 伤害 ${Number(report.boss?.damage||0).toFixed(0)}</p></section></div></details>`;
+    this.elements.modal.innerHTML=`<div class="eyebrow">${win?'ZONE SECURED':'SIGNAL LOST'}</div><h2>${win?'遗迹已守住':'行动中止'}</h2><p>${win?'你击败了骸骨巨像，遗迹工坊得以保存。':'试试不同的武器和升级组合，再来一局吧！'}</p><p>抵达第 ${state.wave} 波 · 击败 ${state.kills} · 等级 ${state.level}<br>总输出 ${Number(report.totalDamage||0).toFixed(0)} · 承受伤害 ${Number(report.totalDamageTaken||0).toFixed(0)} · Boss 战 ${Number(report.boss?.duration||0).toFixed(1)} 秒<br>部署 ${garden.stats.planted} 件 · 装置击杀 ${garden.stats.kills} · 联动触发 ${garden.stats.combos} 次 · 伙伴 ${garden.buddies.length}<br>存活 ${Math.floor(state.time)} 秒 · 最佳 ${best} 击败${bossLine}</p>${detail}<div class="run-report-actions"><button id="copy-run-report" class="primary">复制报告</button><button id="download-run-report" class="primary">下载 JSON</button></div><button id="restart" class="primary">再来一局 →</button><button id="change-hero" class="primary">更换角色</button>`;
     this.elements.modal.classList.remove('hidden');
     this.$('#restart').onclick=onRestart;
     this.$('#change-hero').onclick=onChangeHero;
     this.$('#change-hero').textContent='选择关卡 / 角色';
+    const reportJson=JSON.stringify(report,null,2);
+    this.$('#copy-run-report').onclick=async()=>{let copied=false;try{await navigator.clipboard?.writeText(reportJson);copied=Boolean(navigator.clipboard)}catch{}if(!copied){const area=document.createElement('textarea');area.value=reportJson;area.style.position='fixed';area.style.opacity='0';document.body.append(area);area.select();try{copied=document.execCommand('copy')}catch{}area.remove()}this.showToast(copied?'报告已复制':'复制失败，请手动下载');};
+    this.$('#download-run-report').onclick=()=>{const blob=new Blob([reportJson],{type:'application/json'}),url=URL.createObjectURL(blob),link=document.createElement('a');link.href=url;link.download=`run-report-${report.chapter||state.chapter||'run'}-${Date.now()}.json`;link.click();setTimeout(()=>URL.revokeObjectURL(url),1000)};
     if(state.chapter==='furnace'){
       this.$('#modal h2').textContent=win?'熔炉已熄灭':'行动中止';
       if(win)this.$('#modal p').textContent='黑骑士已被击败，熔炉要塞得以解放。';

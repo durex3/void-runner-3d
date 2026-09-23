@@ -30,7 +30,7 @@ export function installPerformanceTest(game){
   const status=panel.querySelector('#performance-status');
   const pauseButton=panel.querySelector('#performance-pause');
   const originalStart=game.start.bind(game);
-  let currentPreset='standard',samples=[],lastFrame=performance.now(),lastUi=0,benchmarkEnd=0,lastResult=null;
+  let currentPreset='standard',samples=[],lastFrame=performance.now(),lastUi=0,benchmarkEnd=0,lastResult=null,benchmarkActive=false;
 
   game.saveBest=()=>{};
   game.levelUp=()=>{};
@@ -73,7 +73,7 @@ export function installPerformanceTest(game){
     }
   }
 
-  function resetSamples(){samples=[];lastFrame=performance.now();benchmarkEnd=0;lastResult=null;status.textContent='采样已重置';return snapshot()}
+  function resetSamples(){samples=[];lastFrame=performance.now();benchmarkEnd=0;benchmarkActive=false;lastResult=null;status.textContent='采样已重置';return snapshot()}
 
   function load(id=currentPreset){
     const preset=PRESETS[id];
@@ -95,7 +95,7 @@ export function installPerformanceTest(game){
   function frameMetrics(){
     const info=game.renderer.info,gl=game.renderer.getContext(),buffer=new T.Vector2();game.renderer.getDrawingBufferSize(buffer);
     return {calls:info.render.calls,triangles:info.render.triangles,lines:info.render.lines,points:info.render.points,geometries:info.memory.geometries,textures:info.memory.textures,
-      dpr:game.renderer.getPixelRatio(),buffer:[buffer.x,buffer.y],renderer:gl.getParameter(gl.RENDERER),vendor:gl.getParameter(gl.VENDOR)};
+      dpr:game.renderer.getPixelRatio(),adaptiveDpr:game.quality?{enabled:game.quality.enabled,ratio:game.quality.ratio,frameMs:game.quality.frameMs}:null,buffer:[buffer.x,buffer.y],renderer:gl.getParameter(gl.RENDERER),vendor:gl.getParameter(gl.VENDOR)};
   }
 
   function snapshot(){
@@ -109,19 +109,19 @@ export function installPerformanceTest(game){
   }
 
   function renderMetrics(now){
-    const data=snapshot(),fps=data.fps.toFixed(1),ms=data.frameMs.toFixed(2),objects=data.objects,render=data.render;
+    const data=lastResult||snapshot(),fps=data.fps.toFixed(1),ms=data.frameMs.toFixed(2),objects=data.objects,render=data.render;
     live.textContent=`${fps} FPS · ${ms} ms`;
-    metricsOutput.textContent=`${data.label}\nFPS 当前 ${fps} · 平均 ${data.averageFps.toFixed(1)}\n帧时间 平均 ${ms} ms · P95 ${data.p95Ms.toFixed(2)} · 最差 ${data.worstMs.toFixed(2)}\nDraw calls ${render.calls} · 三角形 ${render.triangles.toLocaleString()}\n几何体 ${render.geometries} · 纹理 ${render.textures}\n敌人 ${objects.enemies} · 装置 ${objects.devices} · 资源 ${objects.resources}\n弹丸 ${objects.bullets} · 敌弹 ${objects.hazards} · 特效 ${objects.effects}\nDPR ${render.dpr.toFixed(2)} · 缓冲区 ${render.buffer.join('×')}\n视口 ${data.viewport.join('×')} · 样本 ${data.sampleCount}`;
-    if(benchmarkEnd){
+    metricsOutput.textContent=`${data.label}\nFPS 当前 ${fps} · 平均 ${data.averageFps.toFixed(1)}\n帧时间 平均 ${ms} ms · P95 ${data.p95Ms.toFixed(2)} · 最差 ${data.worstMs.toFixed(2)}\nDraw calls ${render.calls} · 三角形 ${render.triangles.toLocaleString()}\n几何体 ${render.geometries} · 纹理 ${render.textures}\n敌人 ${objects.enemies} · 装置 ${objects.devices} · 资源 ${objects.resources}\n弹丸 ${objects.bullets} · 敌弹 ${objects.hazards} · 特效 ${objects.effects}\nDPR ${render.dpr.toFixed(2)}${render.adaptiveDpr?.enabled?' · 自适应 DPR '+render.adaptiveDpr.ratio.toFixed(2):''} · 缓冲区 ${render.buffer.join('×')}\n视口 ${data.viewport.join('×')} · 样本 ${data.sampleCount}`;
+    if(benchmarkActive){
       const left=Math.max(0,(benchmarkEnd-now)/1000);
       status.textContent=left?`采样中：剩余 ${left.toFixed(1)} 秒`:`采样完成：平均 ${data.averageFps.toFixed(1)} FPS，P95 ${data.p95Ms.toFixed(2)} ms`;
-      if(!left){benchmarkEnd=0;lastResult=data}
-    }
+    }else if(lastResult)status.textContent=`采样完成：平均 ${data.averageFps.toFixed(1)} FPS，P95 ${data.p95Ms.toFixed(2)} ms`;
   }
 
   function sample(now){
     const delta=now-lastFrame;lastFrame=now;
-    if(game.state.mode==='playing'&&!document.hidden&&delta>0&&delta<2000){samples.push(delta);if(samples.length>900)samples.shift()}
+    if(!lastResult&&game.state.mode==='playing'&&!document.hidden&&delta>0&&delta<2000){samples.push(delta);if(samples.length>900)samples.shift()}
+    if(benchmarkActive&&now>=benchmarkEnd){benchmarkActive=false;lastResult=snapshot();benchmarkEnd=0}
     if(now-lastUi>500){renderMetrics(now);lastUi=now}
     requestAnimationFrame(sample);
   }
@@ -135,7 +135,7 @@ export function installPerformanceTest(game){
   panel.addEventListener('keydown',event=>event.stopPropagation());
   panel.addEventListener('keyup',event=>event.stopPropagation());
   panel.querySelector('#performance-apply').onclick=()=>load(presetSelect.value);
-  panel.querySelector('#performance-run').onclick=()=>{if(game.state.mode!=='playing')togglePause();samples=[];lastFrame=performance.now();benchmarkEnd=performance.now()+15000;status.textContent='开始 15 秒采样'};
+  panel.querySelector('#performance-run').onclick=()=>{if(game.state.mode!=='playing')togglePause();samples=[];lastFrame=performance.now();lastResult=null;benchmarkEnd=performance.now()+15000;benchmarkActive=true;status.textContent='开始 15 秒采样'};
   panel.querySelector('#performance-reset').onclick=resetSamples;
   pauseButton.onclick=togglePause;
   game.pause=togglePause;

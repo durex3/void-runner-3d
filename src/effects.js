@@ -8,6 +8,8 @@ export class EffectsSystem{
     this.disposeActor=disposeActor;
     this.effects=[];
     this.corpses=[];
+    this.mobileEffects=globalThis.matchMedia?.('(pointer: coarse)').matches??false;
+    this.maxEffects=this.mobileEffects?160:180;
     this.ready=new T.TextureLoader().loadAsync('/assets/effects/kenney/circle_02.png').then(map=>{
       map.colorSpace=T.SRGBColorSpace;
       for(const key of ['glow','hurt','shock'])this.materials[key]=new T.SpriteMaterial({map,color:this.materials[key].color,transparent:true,opacity:.65,depthWrite:false,toneMapped:false});
@@ -29,6 +31,12 @@ export class EffectsSystem{
       charge:new T.MeshBasicMaterial({color:0xff765d,transparent:true,opacity:.9,side:T.DoubleSide,depthTest:false,depthWrite:false,toneMapped:false}),
       chargeTip:new T.MeshBasicMaterial({color:0xffebaf,depthTest:false,depthWrite:false,toneMapped:false}),
       shield:new T.MeshBasicMaterial({color:0x9ff7ee,transparent:true,opacity:.26,wireframe:true,depthWrite:false,toneMapped:false}),
+    };
+    this.deviceGeometry={
+      beam:new T.CylinderGeometry(.055,.055,1,5),
+      muzzle:new T.OctahedronGeometry(.23),
+      ring:new T.RingGeometry(.78,1,48),
+      flash:new T.OctahedronGeometry(1),
     };
   }
 
@@ -100,14 +108,16 @@ export class EffectsSystem{
   }
 
   add(object,life,{fixed=false,velocity=new T.Vector3(),dispose=false,update=null,cleanup=null}={}){
-    if(this.effects.length>=180)return false;
+    if(this.effects.length>=this.maxEffects)return false;
     this.scene.add(object);
     this.effects.push({obj:object,life,maxLife:life,age:0,v:velocity,fixed,dispose,update,cleanup});
     return true;
   }
 
   burst(position,color=0xfbc47b,count=8){
-    for(let index=0;index<count&&this.effects.length<180;index++){
+    const density=this.effects.length;
+    const limited=this.mobileEffects?(density>=130?Math.min(1,count):density>=90?Math.ceil(count*.5):count):count;
+    for(let index=0;index<limited&&this.effects.length<this.maxEffects;index++){
       const material=color===0xfbc47b?this.materials.glow:color===0x9ff7ee?this.materials.shock:this.materials.hurt;
       if(!material.isSpriteMaterial)continue;
       const object=new T.Sprite(material);
@@ -150,9 +160,10 @@ export class EffectsSystem{
   }
 
   deviceAttack({kind,origin,target}){
-    if(this.effects.length>=180)return;
+    if(this.effects.length>=this.maxEffects)return;
     const electric=kind==='electric',explosion=kind==='explosion',color=electric?0x91ddff:kind==='thorn'?0xc9ff9c:kind==='resist'?0xffe6a3:0xffb456;
     const group=new T.Group(),material=new T.MeshBasicMaterial({color,transparent:true,opacity:.95,depthWrite:false,toneMapped:false,side:T.DoubleSide});
+    let lineGeometry=null,lineMaterial=null;
     group.userData.feedback=`device-${kind}`;
     const from=origin.clone().setY(.85),to=(target||origin).clone().setY(1.1);
     if(kind==='thorn'||electric){
@@ -163,20 +174,24 @@ export class EffectsSystem{
         for(let i=1;i<6;i++)points.push(from.clone().lerp(to,i/6).addScaledVector(side,(i%2?1:-1)*.22));
       }
       points.push(to);
-      for(let i=1;i<points.length;i++){
+      if(electric){
+        lineGeometry=new T.BufferGeometry().setFromPoints(points);
+        lineMaterial=new T.LineBasicMaterial({color,transparent:true,opacity:.95,depthWrite:false,toneMapped:false});
+        const beam=new T.Line(lineGeometry,lineMaterial);beam.renderOrder=5;group.add(beam);
+      }else for(let i=1;i<points.length;i++){
         const delta=points[i].clone().sub(points[i-1]),length=delta.length();if(length<.001)continue;
-        const beam=new T.Mesh(new T.CylinderGeometry(electric?.045:.055,electric?.045:.055,length,5),material);
-        beam.position.copy(points[i-1]).lerp(points[i],.5);beam.quaternion.setFromUnitVectors(new T.Vector3(0,1,0),delta.normalize());group.add(beam);
+        const beam=new T.Mesh(this.deviceGeometry.beam,material);
+        beam.position.copy(points[i-1]).lerp(points[i],.5);beam.scale.y=length;beam.quaternion.setFromUnitVectors(new T.Vector3(0,1,0),delta.normalize());group.add(beam);
       }
-      const muzzle=new T.Mesh(new T.OctahedronGeometry(.23),material);muzzle.position.copy(from);group.add(muzzle);
+      const muzzle=new T.Mesh(this.deviceGeometry.muzzle,material);muzzle.position.copy(from);group.add(muzzle);
     }
-    const ring=new T.Mesh(new T.RingGeometry(.78,1,48),material);ring.rotation.x=-Math.PI/2;
+    const ring=new T.Mesh(this.deviceGeometry.ring,material);ring.rotation.x=-Math.PI/2;
     ring.position.copy(explosion?origin:to).setY(.16);group.add(ring);
-    const flash=new T.Mesh(new T.OctahedronGeometry(explosion?.6:.28),material);flash.position.copy(explosion?from:to);group.add(flash);
-    const cleanup=()=>{group.traverse(o=>o.geometry?.dispose());material.dispose()};
+    const flashSize=explosion?.6:.28,flash=new T.Mesh(this.deviceGeometry.flash,material);flash.scale.setScalar(flashSize);flash.position.copy(explosion?from:to);group.add(flash);
+    const cleanup=()=>{lineGeometry?.dispose();lineMaterial?.dispose();material.dispose()};
     if(!this.add(group,explosion?.45:.26,{fixed:true,update:({progress})=>{
       const ease=1-(1-progress)**2;ring.scale.setScalar(explosion?.4+2.8*ease:.3+.65*ease);
-      flash.scale.setScalar(1-progress);material.opacity=.95*(1-progress)**.7;
+      flash.scale.setScalar(flashSize*(1-progress));material.opacity=.95*(1-progress)**.7;if(lineMaterial)lineMaterial.opacity=material.opacity;
     },cleanup}))cleanup();
   }
 

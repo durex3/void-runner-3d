@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite --host 127.0.0.1 --port 5188",
     "build": "vite build",
-    "test": "node --test tests/architecture.test.mjs tests/character-stats.test.mjs tests/device-status.test.mjs tests/garden.test.mjs tests/combat.test.mjs tests/levels.test.mjs && node tests/browser.mjs",
+    "test": "node --test tests/architecture.test.mjs tests/character-stats.test.mjs tests/device-status.test.mjs tests/garden.test.mjs tests/combat.test.mjs tests/levels.test.mjs tests/run-telemetry.test.mjs && node tests/browser.mjs",
     "test:level2": "node --test tests/levels.test.mjs && node tests/furnace-browser.mjs",
     "test:boss-page": "node tests/boss-test-browser.mjs && node tests/boss-balance-browser.mjs",
     "test:weapons": "node tests/role-weapons.mjs && node tests/mechanics-browser.mjs && node tests/knight-browser.mjs && node tests/knight-vfx.mjs",
@@ -14,7 +14,9 @@
     "test:feedback": "node tests/impact-feedback-browser.mjs",
     "test:mobile": "node tests/mobile-joystick.mjs",
     "test:audio": "node tests/audio-browser.mjs",
-    "test:performance": "node tests/performance-browser.mjs"
+    "test:performance": "node tests/performance-browser.mjs",
+    "test:telemetry": "node --test tests/run-telemetry.test.mjs && node tests/run-telemetry-browser.mjs",
+    "test:balance": "node --test tests/balance-report.test.mjs && node tests/balance-report-browser.mjs"
   },
   "dependencies": {
     "three": "0.180.0"

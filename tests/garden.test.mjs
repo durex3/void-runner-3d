@@ -12,6 +12,15 @@ test('compost heals and extends surrounding plant life on plant kill',()=>{const
 test('shotgun waters but other weapons do not',()=>{const {garden,hero}=setup();garden.combos.add('watering');const p=garden.plant(0,hero.position);garden.onShot(0);assert.ok(p.grow>0);garden.onShot(1);assert.equal(p.grow,0);assert.equal(p.cooldown,0);assert.ok(p.life>48)});
 test('dash plants two matching crops',()=>{const {garden,state}=setup();garden.combos.add('pollen');state.weapon=2;garden.onDash(new T.Vector3(),new T.Vector3(5,0,0));assert.deepEqual(garden.plants.map(p=>p.type),[2,2]);});
 test('companions collect, heal, and friendship multiplies nearby plant damage',()=>{const {garden,hero,enemy,state}=setup();garden.recruit('slime');garden.recruit('mushroom');garden.combos.add('friendship');const e=enemy();garden.hit(e,20,'thorn',hero.position);assert.equal(e.hp,270);const drop={obj:new T.Group()};drop.obj.position.set(-5,.5,0);const before=drop.obj.position.distanceTo(hero.position);garden.step(4.1,[drop],()=>{});assert.equal(state.hp,48);assert.ok(drop.obj.position.distanceTo(hero.position)<before);garden.recruit('slime');assert.equal(garden.buddies.length,2);assert.equal(garden.buddies[0].rank,2)});
+test('all six combos report each real activation through the telemetry hook',()=>{
+  const trigger=(id,activate)=>{const {garden,hero,enemy}=setup(),events=[];garden.onCombo=combo=>events.push(combo);garden.combos.add(id);activate({garden,hero,enemy});assert.deepEqual(events,[id])};
+  trigger('friendship',({garden,hero,enemy})=>{garden.recruit('slime');garden.hit(enemy(),10,'thorn',hero.position)});
+  trigger('snare',({garden,hero,enemy})=>{const target=enemy();target.slow=1;garden.hit(target,10,'electric',hero.position)});
+  trigger('voltage',({garden,hero})=>{garden.plant(1,hero.position);garden.electrify(hero.position)});
+  trigger('watering',({garden})=>garden.onShot(1));
+  trigger('pollen',({garden})=>garden.onDash(new T.Vector3(),new T.Vector3(5,0,0)));
+  trigger('compost',({garden,hero})=>garden.onKill(hero.position,{garden:true}));
+});
 test('boss warning waits before damaging player and destroying plants',()=>{const {garden,hero}=setup();const p=garden.plant(0,hero.position);let damage=0;garden.stomp(hero.position);garden.step(.8,[],d=>damage+=d);assert.equal(damage,0);assert.equal(p.dead,false);garden.step(.81,[],d=>damage+=d);assert.equal(damage,28);assert.equal(p.dead,true);assert.equal(garden.stats.destroyed,1)});
 test('caps, expiration and restart keep garden objects bounded',()=>{const {garden,hero,scene}=setup();for(let i=0;i<60;i++){garden.plant(i%3,hero.position);garden.seed(i%3,new T.Vector3(15,0,0))}assert.equal(garden.plants.length,24);assert.equal(garden.seeds.length,36);garden.combos.add(COMBO_ID());garden.reset();assert.equal(scene.children.length,1);assert.equal(garden.plants.length,0);assert.equal(garden.combos.size,0)});
 function COMBO_ID(){return COMBOS[0].id}
