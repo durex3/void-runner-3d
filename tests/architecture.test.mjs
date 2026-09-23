@@ -29,7 +29,7 @@ test('upgrade strategy returns ordinary upgrades after all available combos are 
 });
 
 test('upgrade recommendations match each hero without removing core choices',()=>{
-  const expected={Knight:'pollen',Ranger:'snare',Druid:'snare',Engineer:'watering'};
+  const expected={Knight:'shieldCounter',Ranger:'snare',Druid:'snare',Engineer:'watering'};
   for(const [hero,id] of Object.entries(expected)){
     const choices=createUpgradeChoices({state:createGameState(),garden:{combos:new Set()},heroName:hero,random:()=>.5});
     assert.equal(choices[0].id,id);

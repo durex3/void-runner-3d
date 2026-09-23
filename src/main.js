@@ -6,7 +6,10 @@ const app=document.querySelector('#app');
 const game=new RelicWorkshopGame(app);
 
 game.initialize().then(async()=>{
-  if(location.pathname.endsWith('/wave-test.html')){
+  if(location.pathname.endsWith('/knight-preview.html')){
+    const {installKnightPreview}=await import('./knight-preview.js');
+    installKnightPreview(game);
+  }else if(location.pathname.endsWith('/wave-test.html')){
     const {installWaveTest}=await import('./wave-test.js');
     installWaveTest(game);
   }else if(location.pathname.endsWith('/performance-test.html')){

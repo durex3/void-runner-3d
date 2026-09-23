@@ -51,10 +51,11 @@ export class WeaponCombat{
       const delta=e.obj.position.clone().sub(this.hero.position).setY(0),distance=delta.length();
       return distance<=p.range&&(distance<=1e-8||delta.normalize().dot(shot.dir)>=Math.cos(p.arc*Math.PI/360));
     });
-    const bonus=knightMeleeBonus(this.state,p,targets);
+    const bonus=knightMeleeBonus(this.state,p,targets),upgradeHits=[];
     for(const e of targets){
       hits.push(e.obj.position.clone());
       const pursuit=bonus.pursuit&&e.stagger>0&&!(e.customBoss&&e.furnaceAction)?1.35:1;
+      if(pursuit>1)upgradeHits.push(e.obj.position.clone());
       this.hit(e,shot.damage*bonus.damage*pursuit,p,false,'melee');
       if(p.knock)e.push=shot.dir.clone().multiplyScalar(p.knock*bonus.knock*(e.type==='boss'?.15:1));
       if(p.stagger&&!(e.customBoss&&e.furnaceAction))e.stagger=Math.max(e.stagger||0,p.stagger*(e.type==='boss'?.2:1));
@@ -62,7 +63,8 @@ export class WeaponCombat{
     const target=shot.target,delta=target?.obj.position.clone().sub(this.hero.position).setY(0),distance=delta?.length()??Infinity;
     let reason='hit';if(!targets.includes(target)){if(!target||target.dead||target.stunned)reason='target-unavailable';else if(distance>p.range)reason='out-of-range';else if(distance>1e-8&&delta.normalize().dot(shot.dir)<Math.cos(p.arc*Math.PI/360))reason='outside-arc';else reason='target-unavailable'}
     this.onMeleeDiagnostic({phase:'result',profile:p,target,time:this.state.time,distance,startedAt:shot.startedAt,startDistance:shot.startDistance,bossPhase:target?.furnaceAction?.phase||'none',hit:reason==='hit',reason});
-    this.onMeleeImpact({profile:p,origin:this.hero.position.clone(),direction:shot.dir.clone(),hits,targets});}
+    this.onMeleeImpact({profile:p,origin:this.hero.position.clone(),direction:shot.dir.clone(),hits,targets,
+      upgrade:bonus.knock>1?'heavySweep':bonus.damage>1?'shieldCounter':upgradeHits.length?'macePursuit':null,upgradeHits});}
   step(dt){
     if(this.swing){this.swing.time-=dt;if(this.swing.time<=0)this.swing=null}
     const ready=[];this.pending=this.pending.filter(p=>{p.delay-=dt;if(p.delay<=0){ready.push(p);return false}return true});

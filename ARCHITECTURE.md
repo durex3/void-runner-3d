@@ -12,6 +12,8 @@
 | `furnace-combat.js` | 黑骑士与突击兵锁定方向的预警、执行、收招状态机及扫掠判定 |
 | `combat.js` | 玩家武器攻击模拟，不直接操作界面和输入 |
 | `garden.js` | 装置、联动升级、伙伴与 Boss 践踏 |
+| `knight-vfx.js` | 骑士专属升级就绪/命中表现，消费真实强化事件，通过 EffectsSystem 管理生命周期与材质还原 |
+| `knight-preview.js` | 独立骑士预览，使用真实战斗结算，隔离正式存档；生产入口为 knight-preview.html |
 | `actors.js` | 模型加载、装备挂载、骨骼动画和角色清理 |
 | `ui.js` | DOM 模板、HUD 和弹窗渲染；通过回调向游戏层报告用户操作 |
 | `input-controller.js` | 键盘、左侧虚拟摇杆、触屏冲刺及失焦输入，向游戏层发送归一化方向、模拟力度和动作意图 |
@@ -77,3 +79,7 @@ Boss 攻防状态由真实游戏循环推进：`game.js` 记录玩家实际步�
 - `npm run test:balance`：构筑分析聚合与数据集单测，以及 Google Chrome 桌面/移动布局、刷新恢复、重复导入去重、备注、删除、筛选和两类 JSON 下载回归。
 - `node tests/kaykit.mjs`：角色模型、骨骼、动画与资源清理。
 - `npm run build`：生产构建。
+
+## 骑士收招姿态约束
+
+AnimationAction.stop() 会立即还原骨骼初始姿态。分层角色停止攻击或受击动作后，必须在渲染前执行 mixer.update(0)，让替代待机动作在同一帧生效。预览回归通过比较切换帧与额外零时间更新后的武器世界矩阵，防止出现一帧闪剑。

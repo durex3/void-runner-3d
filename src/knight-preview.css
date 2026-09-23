@@ -1,0 +1,4 @@
+.knight-preview #hud,.knight-preview #bottom,.knight-preview #garden-hud,.knight-preview #touch-stick,.knight-preview #touchdash,.knight-preview #toast,.knight-preview #xp{display:none!important}
+@media(max-width:700px){
+  .knight-preview #boss-test-panel{top:auto;bottom:max(8px,env(safe-area-inset-bottom));left:8px;width:calc(100vw - 16px);box-sizing:border-box;max-height:35dvh}
+}

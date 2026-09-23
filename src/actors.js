@@ -151,7 +151,15 @@ export function animateActor(actor,dt,time,speed=0){
   if(!r.dead)sampleHeavy(r);
   r.mixer.update(dt);r.phase+=dt;r.hit=Math.max(0,r.hit-dt);
   if(r.dead)return;
-  if(r.layered){r.attackLeft=Math.max(0,r.attackLeft-dt);if(!r.attackLeft&&r.attackAction){r.attackAction.stop();r.attackAction=null;r.upperIdle=action(r,actor.userData.profile.stance,false,'upper')}if(r.hitAction&&!r.hit){r.hitAction.stop();r.hitAction=null}forgePose(r);return}
+  if(r.layered){
+    r.attackLeft=Math.max(0,r.attackLeft-dt);let poseChanged=false;
+    if(!r.attackLeft&&r.attackAction){r.attackAction.stop();r.attackAction=null;r.upperIdle=action(r,actor.userData.profile.stance,false,'upper');poseChanged=true;}
+    if(r.hitAction&&!r.hit){r.hitAction.stop();r.hitAction=null;poseChanged=true;}
+    // stop() restores the bind pose immediately; apply the replacement action
+    // before rendering so the sword cannot flash at the unanimated hand slot.
+    if(poseChanged)r.mixer.update(0);
+    forgePose(r);return;
+  }
   r.kick=Math.max(0,r.kick-dt*4.5);
   // Only the upper body is layered procedurally; the supplied rig drives the feet.
   const armed=actor.userData.isHero,melee=armed?actor.userData.weapon===3:['brute','runner','boss'].includes(actor.userData.type);
