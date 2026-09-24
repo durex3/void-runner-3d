@@ -6,8 +6,11 @@
   "scripts": {
     "dev": "vite --host 127.0.0.1 --port 5188",
     "build": "vite build",
-    "test": "node --test tests/architecture.test.mjs tests/character-stats.test.mjs tests/device-status.test.mjs tests/garden.test.mjs tests/combat.test.mjs tests/levels.test.mjs tests/run-telemetry.test.mjs && node tests/browser.mjs",
+    "test": "node --test tests/architecture.test.mjs tests/character-stats.test.mjs tests/device-status.test.mjs tests/garden.test.mjs tests/combat.test.mjs tests/levels.test.mjs tests/boss-damage-access.test.mjs tests/run-telemetry.test.mjs && node tests/browser.mjs",
     "test:level2": "node --test tests/levels.test.mjs && node tests/furnace-browser.mjs",
+    "test:outpost": "node --test tests/outpost.test.mjs && node tests/outpost-browser.mjs",
+    "test:chapter3": "node --test tests/boss-damage-access.test.mjs tests/outpost.test.mjs tests/levels.test.mjs && node tests/outpost-browser.mjs",
+    "test:boss-domain": "node --test tests/boss-damage-access.test.mjs tests/combat.test.mjs tests/outpost.test.mjs tests/levels.test.mjs",
     "test:boss-page": "node tests/boss-test-browser.mjs && node tests/boss-balance-browser.mjs",
     "test:weapons": "node tests/role-weapons.mjs && node tests/mechanics-browser.mjs && node tests/knight-browser.mjs && node tests/knight-vfx.mjs",
     "test:readability": "node tests/combat-readability.mjs",

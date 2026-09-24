@@ -13,7 +13,7 @@ export class WeaponCombat{
     const target=this.targets().sort((a,b)=>a.obj.position.distanceToSquared(this.hero.position)-b.obj.position.distanceToSquared(this.hero.position))[0];
     if(!target||target.obj.position.distanceTo(this.hero.position)>(profile.range||15))return false;
     const dir=target.obj.position.clone().sub(this.hero.position).setY(0).normalize();this.hero.rotation.y=Math.atan2(dir.x,dir.z);
-    const shot={profile,damage:profile.damage*this.state.damage,dir,knocked:new Set()};
+    const shot={profile,damage:profile.damage*this.state.damage,dir,origin:this.hero.position.clone(),knocked:new Set()};
     this.state.shot=profile.interval/this.state.rate;this.garden.onShot(profile.type);
     if(profile.effect==='melee'){
       this.onFire(profile);this.swing={dir:dir.clone(),time:profile.interval/this.state.rate};
@@ -28,7 +28,7 @@ export class WeaponCombat{
       this.onFire(profile);const visited=new Set();let next=target,from=this.hero.position.clone().setY(1.2),amount=shot.damage;
       for(let i=0;i<profile.targets&&next;i++){
         const position=next.obj.position.clone(),end=position.clone().setY(1);visited.add(next);
-        this.effect(beam(from,end),.16);this.hit(next,amount,profile,true);this.garden.electrify(position);from=end;amount*=profile.falloff;
+        this.effect(beam(from,end),.16);this.hit(next,amount,profile,true,'electric',shot.origin);this.garden.electrify(position);from=end;amount*=profile.falloff;
         next=this.targets().filter(e=>!visited.has(e)&&e.obj.position.distanceTo(position)<=profile.jumpRange).sort((a,b)=>a.obj.position.distanceToSquared(position)-b.obj.position.distanceToSquared(position))[0];
       }
     }else{
@@ -41,11 +41,11 @@ export class WeaponCombat{
     for(let i=0;i<p.count&&this.bullets.length<160;i++){
       const dir=shot.dir.clone().applyAxisAngle(new T.Vector3(0,1,0),p.effect==='shotgun'?(i-(p.count-1)/2)*.14:0),v=dir.multiplyScalar(p.speed);
       const obj=projectile(this.hero.position.clone().setY(1),v,p.type,false,p.effect);this.scene.add(obj);
-      this.bullets.push({obj,v,life:p.life,weapon:p.type,damage:shot.damage,profile:p,hit:new Set(),remaining:p.pierce||1,distance:0,knocked:shot.knocked});
+      this.bullets.push({obj,v,life:p.life,weapon:p.type,damage:shot.damage,profile:p,origin:shot.origin.clone(),hit:new Set(),remaining:p.pierce||1,distance:0,knocked:shot.knocked});
     }
   }
-  hit(e,amount,profile,electric=false,kind='projectile'){if(e.dead||e.stunned)return;const bonus=electric&&this.garden.combos.has('snare')&&e.slow>0?1.7:1;this.damage(e,amount*bonus,{weapon:profile.type,weaponLabel:profile.label,model:profile.model});this.onHit({profile,enemy:e,position:e.obj.position.clone(),kind:electric?'electric':kind})}
-  impact(p){let affected=0;for(const e of this.targets()){if(e.obj.position.distanceTo(p.center)>p.shot.profile.radius)continue;e.slow=Math.max(e.slow||0,p.shot.profile.slow);affected++;this.hit(e,p.shot.damage,p.shot.profile,false,'nature')}this.garden.pulse(p.center,0,p.shot.profile.radius,.2);this.onHit({profile:p.shot.profile,position:p.center.clone(),kind:'nature-area',affected})}
+  hit(e,amount,profile,electric=false,kind='projectile',origin=this.hero.position){if(e.dead||e.stunned)return;const bonus=electric&&this.garden.combos.has('snare')&&e.slow>0?1.7:1;this.damage(e,amount*bonus,{weapon:profile.type,weaponLabel:profile.label,model:profile.model,effect:profile.effect,origin:origin.clone(),distance:e.obj.position.distanceTo(origin)});this.onHit({profile,enemy:e,position:e.obj.position.clone(),kind:electric?'electric':kind})}
+  impact(p){let affected=0;for(const e of this.targets()){if(e.obj.position.distanceTo(p.center)>p.shot.profile.radius)continue;e.slow=Math.max(e.slow||0,p.shot.profile.slow);affected++;this.hit(e,p.shot.damage,p.shot.profile,false,'nature',p.shot.origin)}this.garden.pulse(p.center,0,p.shot.profile.radius,.2);this.onHit({profile:p.shot.profile,position:p.center.clone(),kind:'nature-area',affected})}
   melee(shot){
     const p=shot.profile,hits=[],targets=this.targets().filter(e=>{
       const delta=e.obj.position.clone().sub(this.hero.position).setY(0),distance=delta.length();
@@ -56,7 +56,7 @@ export class WeaponCombat{
       hits.push(e.obj.position.clone());
       const pursuit=bonus.pursuit&&e.stagger>0&&!(e.customBoss&&e.furnaceAction)?1.35:1;
       if(pursuit>1)upgradeHits.push(e.obj.position.clone());
-      this.hit(e,shot.damage*bonus.damage*pursuit,p,false,'melee');
+      this.hit(e,shot.damage*bonus.damage*pursuit,p,false,'melee',shot.origin);
       if(p.knock)e.push=shot.dir.clone().multiplyScalar(p.knock*bonus.knock*(e.type==='boss'?.15:1));
       if(p.stagger&&!(e.customBoss&&e.furnaceAction))e.stagger=Math.max(e.stagger||0,p.stagger*(e.type==='boss'?.2:1));
     }
@@ -84,11 +84,11 @@ export class WeaponCombat{
         const distance=b.distance+length*t,p=b.profile,center=e.obj.position.clone();
         const falloff=p.effect==='shotgun'?T.MathUtils.clamp(1-Math.max(0,distance-4)*.075,.55,1):1;
         const hitKind=p.effect==='orb'?'direct':p.effect==='shotgun'?(distance<4?'shotgun-close':'shotgun'):'projectile';
-        this.hit(e,b.damage*falloff,p,false,hitKind);
+        this.hit(e,b.damage*falloff,p,false,hitKind,b.origin);
         if(p.effect==='shotgun'&&!b.knocked.has(e)){b.knocked.add(e);e.push=b.v.clone().setY(0).normalize().multiplyScalar(e.type==='boss'?1.9:9.5)}
         if(p.effect==='orb'){
           this.garden.pulse(center,2,p.radius,.2);
-          for(const other of this.targets())if(other!==e&&other.obj.position.distanceTo(center)<=p.radius)this.hit(other,b.damage*p.splash,p,false,'splash');
+          for(const other of this.targets())if(other!==e&&other.obj.position.distanceTo(center)<=p.radius)this.hit(other,b.damage*p.splash,p,false,'splash',b.origin);
         }
         b.remaining--;b.damage*=p.falloff||1;if(!b.remaining){b.life=0;break}
       }

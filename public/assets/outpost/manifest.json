@@ -1,0 +1,15 @@
+{
+  "license": "CC0",
+  "source": "KayKit Mystery Monthly Characters Series 5",
+  "runtimeFiles": {
+    "boss": "kaykit/Clanker.glb",
+    "enemies": [
+      "enemies/CombatMech.glb",
+      "enemies/Helper_A.glb",
+      "enemies/Helper_B.glb"
+    ],
+    "landmark": ["hiker/Tent.gltf", "hiker/Tent.bin", "hiker/hiker_texture.png"]
+  },
+  "originalRoot": "/Users/liugelong/Desktop/purchased/KayKit_Mystery_Monthly_Series_5",
+  "notes": "Only runtime files used by Chapter 3 are copied into the project. Wind towers, floor, ridges and telegraphs are procedural Three.js geometry."
+}

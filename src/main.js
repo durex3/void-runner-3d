@@ -18,6 +18,9 @@ game.initialize().then(async()=>{
   }else if(location.pathname.endsWith('/boss-test.html')){
     const {installBossTest}=await import('./boss-test.js');
     installBossTest(game);
+  }else if(location.pathname.endsWith('/outpost-test.html')){
+    const {installOutpostTest}=await import('./outpost-test.js');
+    installOutpostTest(game);
   }
 }).catch(error=>{
   console.error(error);

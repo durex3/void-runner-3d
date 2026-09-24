@@ -1,6 +1,7 @@
 import * as T from 'three';
 import * as Actors from './actors.js';
 import {createForgeFlames} from './furnace-vfx.js';
+import {crossesVent} from './boss-counter-rules.js';
 
 export const FORGE_TARGET={radius:3,warning:2.4,burn:2.2,damage:28};
 
@@ -24,18 +25,18 @@ export class FurnaceCombat{
     if(attack?.warning){attack.warning.removeFromParent();attack.warning.geometry.dispose();attack.warning.material.dispose()}
     if(attack?.ground)attack.ground.traverse(obj=>{if(obj.isSprite)obj.material.dispose();else if(obj.isMesh){obj.geometry.dispose();obj.material.dispose();if(obj.isInstancedMesh)obj.dispose()}});
     attack?.ground?.removeFromParent();
-    this.attacks.delete(enemy);enemy.furnaceAction=null;enemy.recovery=0;
+    this.attacks.delete(enemy);enemy.furnaceAction=null;enemy.recovery=0;enemy.furnaceStaggerWindow=0;
     Actors.clearEnemyPresentation(enemy.obj);
     if(enemy.obj.userData.rig)enemy.obj.userData.rig.forgeAge=null;
   }
   recover(enemy,attack){
-    attack.phase='recovery';
+    attack.phase=enemy.type==='boss'&&!attack.ventStaggered?'resume':'recovery';
     const rangedPlayer=this.game.hero.userData.profile?.grip!=='melee';
-    attack.left=enemy.type==='boss'?(attack.kind==='slash'?1.8:(attack.kind==='charge'&&rangedPlayer?1.9:2.4)):1.3;
-    enemy.recovery=attack.left;attack.warning.visible=false;
+    attack.left=enemy.type==='boss'?(attack.ventStaggered?(rangedPlayer?2.1:2.6):.3):1.3;
+    enemy.recovery=attack.phase==='recovery'?attack.left:0;enemy.furnaceStaggerWindow=attack.ventStaggered?attack.left:0;if(attack.ventStaggered)enemy.counterFlash=.28;attack.warning.visible=false;
     if(attack.ground)attack.ground.visible=false;
     if(enemy.obj.userData.rig)enemy.obj.userData.rig.forgeAge=null;
-    if(enemy.type==='boss'){
+    if(enemy.type==='boss'&&attack.ventStaggered){
       this.game.audio?.playBossCue('recovery',attack);
       this.game.furnaceCycle.suppress();
       this.game.clearObjects(this.game.hazards);
@@ -79,8 +80,13 @@ export class FurnaceCombat{
     }
     enemy.obj.rotation.y=Math.atan2(direction.x,direction.z);
     if(boss){
-      this.game.furnaceCycle.suppress();
-      if(kind==='forge')this.game.furnaceCycle.ignite(enemy.hp<=enemy.maxHp*.5?8:1);
+      if(kind==='charge'){
+        this.game.furnaceCycle.ignite(1);this.game.furnaceCycle.left=.85;
+        this.game.showMechanicOnce?.('furnace-charge-counter','引导冲锋穿过亮起的炉栅，黑骑士才会失衡');
+      }else{
+        this.game.furnaceCycle.suppress();
+        if(kind==='forge')this.game.furnaceCycle.ignite(enemy.hp<=enemy.maxHp*.5?8:1);
+      }
     }
   }
   step(enemy,dt){
@@ -88,7 +94,7 @@ export class FurnaceCombat{
     let attack=this.attacks.get(enemy);
     const staggered=enemy.stagger>0,hitStopped=enemy.hitStop>0;
     // Status time advances in every phase; committed boss actions own their clock.
-    enemy.slow=Math.max(0,(enemy.slow||0)-dt);
+    enemy.slow=Math.max(0,(enemy.slow||0)-dt);enemy.furnaceStaggerWindow=Math.max(0,(enemy.furnaceStaggerWindow||0)-dt);
     enemy.stagger=Math.max(0,(enemy.stagger||0)-dt);
     enemy.hitStop=Math.max(0,(enemy.hitStop||0)-dt);
     if(boss&&attack){enemy.stagger=0;enemy.hitStop=0}
@@ -107,7 +113,8 @@ export class FurnaceCombat{
       enemy.attack-=dt;
       if(enemy.attack<=0&&distance<(boss?17:13)){
         const turn=enemy.furnaceTurn||0;enemy.furnaceTurn=turn+1;
-        this.begin(enemy,boss&&turn%3===2?'forge':boss&&distance<6?'slash':'charge');
+        const phaseTwo=boss&&enemy.bossPhase>=2;
+        this.begin(enemy,phaseTwo?['forge','slash','charge'][turn%3]:boss&&turn%3===2?'forge':boss&&distance<6?'slash':'charge');
       }else{
         const speed=(boss?1.6:2.6)*(enemy.slow>0?.55:1);
         if(!enemy.push&&distance>2)enemy.obj.position.addScaledVector(delta,speed*dt);
@@ -135,6 +142,7 @@ export class FurnaceCombat{
         enemy.obj.position.addScaledVector(attack.direction,attack.length/.6*Math.min(dt,Math.max(0,attack.left+dt)));
         if(enemy.obj.position.length()>20)enemy.obj.position.setLength(20);
         if(!attack.hit&&segmentDistance(game.hero.position,from,enemy.obj.position)<(boss?1.5:1)){game.hurt(boss?22:12,boss?'boss-charge':'enemy-charge');attack.hit=true}
+        if(boss&&!attack.ventStaggered&&game.furnaceCycle.phase==='burn'&&game.furnaceCycle.active.some(index=>crossesVent(from,enemy.obj.position,index))){attack.ventStaggered=true;this.game.view.showToast('冲锋穿过燃烧炉栅 · 黑骑士失衡',1.6);this.game.effects.burst(enemy.obj.position,0xffb953,16);this.game.cameraKick=Math.max(this.game.cameraKick,.35);this.recover(enemy,attack)}
       }
       if(attack.left<=0){
         if(attack.kind==='slash'&&attack.strike<attack.strikes){
@@ -169,9 +177,9 @@ export class FurnaceCombat{
           enemy.obj.rotation.y=Math.atan2(delta.x,delta.z);
         }
       }
-    }else if(attack.phase==='recovery'){
-      enemy.recovery=Math.max(0,attack.left);
-      if(attack.left<=0){this.cancel(enemy);enemy.attack=boss?0:2}
+    }else if(attack.phase==='recovery'||attack.phase==='resume'){
+      enemy.recovery=attack.phase==='recovery'?Math.max(0,attack.left):0;
+      if(attack.left<=0){this.cancel(enemy);enemy.attack=boss?.45:2}
     }
     Actors.animateActor(enemy.obj,dt,game.state.time,attack.phase==='attack'&&attack.kind==='charge'?8:forgeSpeed);
   }

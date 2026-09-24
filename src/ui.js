@@ -12,7 +12,7 @@ export class GameView{
   mount(){
     this.app.innerHTML=SHELL;
     const levels=document.createElement('fieldset');levels.id='level-select';
-    levels.innerHTML='<legend>选择关卡</legend><label><input type="radio" name="chapter" value="ruins" checked>01 遗迹工坊</label><label><input type="radio" name="chapter" value="furnace">02 熔炉要塞</label>';
+    levels.innerHTML='<legend>选择关卡</legend><label><input type="radio" name="chapter" value="ruins" checked>01 遗迹工坊</label><label><input type="radio" name="chapter" value="furnace">02 熔炉要塞</label><label><input type="radio" name="chapter" value="outpost">03 风蚀哨站</label>';
     this.$('#characters').before(levels);
     const status=document.createElement('div');status.id='battle-status';
     const notice=document.createElement('div');notice.id='battle-notice';
@@ -35,8 +35,9 @@ export class GameView{
   bindLevels(onLevel){this.app.querySelectorAll('[name="chapter"]').forEach(input=>input.onchange=()=>onLevel(input.value))}
   selectLevel(id){
     this.$(`[name="chapter"][value="${id}"]`).checked=true;
-    this.$('.wave-readout small').textContent=id==='furnace'?'熔炉要塞':'遗迹工坊';
-    this.elements.start.textContent=id==='furnace'?'进入熔炉 →':'进入遗迹 →';
+    this.$('.wave-readout small').textContent=id==='furnace'?'熔炉要塞':id==='outpost'?'风蚀哨站':'遗迹工坊';
+    this.$('.wave-readout span').textContent=id==='outpost'?'/ 04':'/ 08';
+    this.elements.start.textContent=id==='furnace'?'进入熔炉 →':id==='outpost'?'进入哨站 →':'进入遗迹 →';
   }
 
   bind({onStart,onCharacter,onPause,onSound,onDash,onGuide}){
@@ -146,7 +147,7 @@ export class GameView{
   showFinish({win,state,garden,best,bossStats,runReport,onRestart,onChangeHero,onNext}){
     const bossDamage=Object.values(bossStats?.damageByWeapon||{}).reduce((a,b)=>a+b,0)+Object.values(bossStats?.damageByDevice||{}).reduce((a,b)=>a+b,0);
     const damageParts=[...Object.entries(bossStats?.damageByWeapon||{}),...Object.entries(bossStats?.damageByDevice||{})].map(([label,value])=>`${label} ${value.toFixed(0)}`).join(' · ');
-    const sourceLabels={'boss-slash':'重斩','boss-charge':'冲锋','boss-forge':'锁定地火','boss-projectile':'Boss 弹幕','furnace-vent':'炉栅地火','boss-contact':'Boss 接触','enemy-contact':'小怪接触','enemy-projectile':'敌方弹幕',other:'其他'};
+    const sourceLabels={'boss-slash':'重斩','boss-charge':'冲锋','boss-forge':'锁定地火','boss-projectile':'Boss 弹幕','furnace-vent':'炉栅地火','outpost-cannon':'压缩风炮','outpost-rotor':'旋翼扫荡','outpost-vortex':'回流风眼','outpost-overload':'风道过载','outpost-slash':'机械横扫','outpost-charge':'超载冲锋','outpost-gust':'风道撞击','outpost-windbolt':'风弹','outpost-scout':'斥候冲锋','outpost-scout-contact':'斥候接触','boss-contact':'Boss 接触','enemy-contact':'小怪接触','enemy-projectile':'敌方弹幕',other:'其他'};
     const sourceParts=Object.entries(bossStats?.damageSources||{}).map(([label,value])=>`${sourceLabels[label]||label} ${value.toFixed(0)}`).join(' · ');
     const bossLine=bossStats?.startedAt!==undefined?`<br>Boss 战 ${Math.max(0,state.time-bossStats.startedAt).toFixed(1)} 秒 · Boss 伤害 ${bossDamage.toFixed(0)} · 受到伤害 ${bossStats.damageTaken.toFixed(0)}${damageParts?`<br>${damageParts}`:''}${sourceParts?`<br>掉血来源：${sourceParts}`:''}`:'';
     const report=runReport||{};
@@ -168,8 +169,12 @@ export class GameView{
     if(state.chapter==='furnace'){
       this.$('#modal h2').textContent=win?'熔炉已熄灭':'行动中止';
       if(win)this.$('#modal p').textContent='黑骑士已被击败，熔炉要塞得以解放。';
-    }else if(win&&onNext){
-      const next=document.createElement('button');next.id='next-level';next.className='primary';next.textContent='第二关 · 全新开局 →';next.onclick=onNext;
+    }else if(state.chapter==='outpost'){
+      this.$('#modal h2').textContent=win?'哨站已夺回':'行动中止';
+      if(win)this.$('#modal p').textContent='Clanker 已停止运转，风蚀哨站重新归于寂静。';
+    }
+    if(win&&onNext&&state.chapter!=='outpost'){
+      const next=document.createElement('button');next.id='next-level';next.className='primary';next.textContent=state.chapter==='furnace'?'第三关 · 全新开局 →':'第二关 · 全新开局 →';next.onclick=onNext;
       this.$('#restart').before(next);
     }
   }
@@ -204,11 +209,13 @@ export class GameView{
 
   renderHud(state,garden,enemies,stats,devices){
     const warning=garden.effects.some(effect=>effect.stomp);
+    const outpostBoss=enemies.find(e=>e.outpostBoss&&!e.dead),outpostAction=outpostBoss?.outpostAction,phaseTransition=outpostBoss?.phaseTransition>0;
     const recovering=enemies.some(enemy=>enemy.type==='boss'&&!enemy.dead&&enemy.recovery>0);
     const furnaceBoss=enemies.find(e=>e.customBoss&&!e.dead),action=furnaceBoss?.furnaceAction;
     const ruinsBoss=enemies.find(e=>e.type==='boss'&&!e.customBoss&&!e.dead),volley=ruinsBoss?.rangedWindup;
-    const message=warning?'巨像践踏 · 危险区域':recovering?'首领恢复中 · 反击时机':state.furnaceStatus||
+    const message=warning?'巨像践踏 · 危险区域':phaseTransition?'核心超载 · 转阶段中':recovering?'首领恢复中 · 反击时机':state.levelHud?.status||state.chapterStatus||state.furnaceStatus||
       (action?.phase==='warning'?(action.kind==='charge'?'冲锋预警 · 侧向避让':action.kind==='forge'?'地火召唤 · 离开圆圈':'重斩预警 · 绕到背后'):
+      outpostAction?.phase==='warning'?(outpostAction.kind==='cannon'?'压缩风炮预警 · 横向离开风道':outpostAction.kind==='rotor'?'旋翼扫荡预警 · 跟随安全扇区':outpostAction.kind==='vortex'?'回流风眼预警 · 保留冲刺':outpostAction.kind==='overload'?'风道过载预警 · 寻找安全道':outpostAction.kind==='gust'?'阵风预警 · 横向离开风道':outpostAction.kind==='charge'?'超载冲锋预警 · 横向避让':'机械横扫 · 绕到背后'):
       (volley?.pattern==='fan'?'预判扇射 · 侧向变向':volley?.pattern==='ring'?'环形弹幕 · 保持移动':''));
     const danger=this.$('#danger-notice');
     if(danger.textContent!==message)danger.textContent=message;
@@ -220,6 +227,7 @@ export class GameView{
     this.$('#wave').textContent=String(state.wave).padStart(2,'0');
     this.$('#kills').textContent=state.kills;
     this.$('#level').textContent=state.level;
+    this.$('.boss-name').textContent=state.chapter==='furnace'?'黑骑士 · 熔炉统领':state.chapter==='outpost'?'哨站守卫 · Clanker':'骸骨巨像';
     this.$('#time').textContent=`${String(Math.floor(state.time/60)).padStart(2,'0')}:${String(Math.floor(state.time%60)).padStart(2,'0')}`;
     this.$('#xp').style.width=`${Math.min(100,state.xp/state.need*100)}%`;
     const dashStatus=this.$('#dashstatus');
@@ -244,11 +252,11 @@ export class GameView{
     const bossState=this.$('#boss-state');
     const bossStateLabel=this.$('#boss-state-label');
     if(boss){
-      this.$('.boss-name').textContent=boss.customBoss?(boss.hp<=boss.maxHp*.5?'黑骑士 · 双炉阶段':'黑骑士 · 熔炉统领'):'骸骨巨像';
+      this.$('.boss-name').textContent=boss.outpostBoss?'哨站守卫 · Clanker':boss.customBoss?(boss.hp<=boss.maxHp*.5?'黑骑士 · 双炉阶段':'黑骑士 · 熔炉统领'):'骸骨巨像';
       this.$('#bossbar i').style.width=`${boss.hp/boss.maxHp*100}%`;
-      const recovering=boss.recovery>0;
-      const casting=!!(boss.rangedWindup||boss.furnaceAction)&&!recovering;
-      bossStateLabel.textContent=recovering?'恢复中 · 接触安全 · 可反击':casting?(boss.customBoss?(boss.furnaceAction?.kind==='forge'?'召唤地火 · 离开圆圈':boss.furnaceAction?.kind==='charge'?'冲锋蓄力 · 侧向避让':'重斩蓄力 · 绕到背后'):(boss.rangedWindup?.pattern==='fan'?'预判扇射 · 侧向变向':boss.rangedWindup?.pattern==='ring'?'环形弹幕 · 保持移动':'施法中 · 注意弹幕')):'';
+      const phaseTransition=boss.outpostBoss&&boss.phaseTransition>0,recovering=boss.recovery>0,domain=state.levelHud?.damageAccess;
+      const casting=!!(boss.rangedWindup||boss.furnaceAction||boss.outpostAction)&&!recovering;
+      bossStateLabel.textContent=phaseTransition?'超载转换中 · 暂时无敌':recovering?'反制成功 · 接触安全 · 抢破绽':casting?(boss.outpostBoss?(boss.outpostAction?.kind==='cannon'?'压缩风炮 · 横向离开':boss.outpostAction?.kind==='rotor'?'旋翼扫荡 · 跟随安全扇区':boss.outpostAction?.kind==='vortex'?'回流风眼 · 冲刺穿金圈后攻击核心':boss.outpostAction?.kind==='overload'?'风道过载 · 寻找安全道':boss.outpostAction?.kind==='gust'?'阵风蓄力 · 横向离开':boss.outpostAction?.kind==='charge'?'超载冲锋 · 横向避让':'机械重扫 · 绕到背后'):boss.customBoss?(boss.furnaceAction?.kind==='forge'?'召唤地火 · 离开圆圈':boss.furnaceAction?.kind==='charge'?'冲锋蓄力 · 引入亮起的炉栅':'重斩蓄力 · 绕到背后'):(boss.rangedWindup?.pattern==='fan'?'预判扇射 · 侧向变向':boss.rangedWindup?.pattern==='ring'?'环形弹幕 · 保持移动':'施法中 · 注意弹幕')):domain?.status||'';
       if(!recovering&&boss.furnaceAction?.kind==='slash'&&boss.furnaceAction.strikes===2)bossStateLabel.textContent=`连斩 ${boss.furnaceAction.strike}/2 · ${boss.furnaceAction.phase==='warning'?'蓄力中':'挥斩中'}`;
       bossState.classList.toggle('is-recovering',recovering);
       bossState.classList.toggle('is-casting',casting);

@@ -8,18 +8,24 @@ const loader=new GLTFLoader(), models=new Map(), weapons=new Map(), clips=new Ma
 const propNames=['turret_base','arrow_crossbow_bundle','potion_large_orange','potion_large_blue','potion_medium_red','spellbook_open','spellbook_closed'];
 export function cloneProp(name){const source=props.get(name)||weapons.get(name);if(!source)throw new Error(`Prop not loaded: ${name}`);return source.clone(true)}
 const characterNames=['Ranger','Knight','Druid','Engineer','Skeleton_Warrior','Skeleton_Rogue','Skeleton_Mage','Skeleton_Golem','Necromancer','BlackKnight'];
+const outpostCharacters=[
+  {name:'WindGuard',url:'/assets/outpost/enemies/CombatMech.glb'},
+  {name:'WindScout',url:'/assets/outpost/enemies/Helper_A.glb'},
+  {name:'WindTech',url:'/assets/outpost/enemies/Helper_B.glb'},
+  {name:'Clanker',url:'/assets/outpost/kaykit/Clanker.glb'},
+];
 const weaponNames=[...new Set(Object.values(HEROES).flatMap(h=>h.weapons.flatMap(w=>[w.model,...(w.offhand?[w.offhand]:[])]))),'Skeleton_Blade','Skeleton_Dagger','Skeleton_Staff','Skeleton_Golem_Axe'];
 export async function preloadActors(progress=()=>{}){
   if(!weaponNames.includes('BlackKnight_Sword_Large'))weaponNames.push('BlackKnight_Sword_Large');
   let done=0;
-  const jobs=[...characterNames.map(name=>({name,kind:'characters',ext:'glb',map:models})),...weaponNames.map(name=>({name,kind:'weapons',ext:'gltf',map:weapons})),...['Medium','Large'].flatMap(rig=>['General','MovementBasic'].map(action=>({name:`Rig_${rig}_${action}`,kind:'animations',ext:'glb',rig})))];
+  const jobs=[...characterNames.map(name=>({name,kind:'characters',ext:'glb',map:models})),...outpostCharacters.map(({name,url})=>({name,url,map:models})),...weaponNames.map(name=>({name,kind:'weapons',ext:'gltf',map:weapons})),...['Medium','Large'].flatMap(rig=>['General','MovementBasic'].map(action=>({name:`Rig_${rig}_${action}`,kind:'animations',ext:'glb',rig})))];
   jobs.push(...propNames.map(name=>({name,kind:'props',ext:'gltf',map:props})));
   jobs.push({name:'Rig_Medium_CombatMelee',kind:'animations',ext:'glb',rig:'Medium'});
   // A small queue avoids simultaneous image decoding spikes on mobile devices.
   let index=0;
   const results=await Promise.allSettled(Array.from({length:3},async()=>{
     while(index<jobs.length){
-      const job=jobs[index++],data=await loader.loadAsync(`/assets/kaykit/${job.kind}/${job.name}.${job.ext}`);
+      const job=jobs[index++],data=await loader.loadAsync(job.url||`/assets/kaykit/${job.kind}/${job.name}.${job.ext}`);
       if(job.map){data.scene.traverse(o=>{if(o.isMesh){o.castShadow=o.receiveShadow=true;o.frustumCulled=false;for(const m of Array.isArray(o.material)?o.material:[o.material]){const definition=data.parser.json.materials?.find(item=>item.name===m.name);if(definition?.pbrMetallicRoughness?.baseColorTexture&&!m.map)throw new Error(`Texture missing: ${job.name}/${m.name}`);m.roughness=.85;m.metalness=0}}});job.map.set(job.name,data.scene)}
       else{const list=clips.get(job.rig)||new Map();for(const clip of data.animations)list.set(clip.name,clip);clips.set(job.rig,list)}
       progress(++done,jobs.length);
@@ -51,12 +57,13 @@ function install(actor,name){
   const previous=actor.userData.rig;
   if(previous){disposeRig(previous);previous.model.removeFromParent()}
   const model=clone(models.get(name));actor.add(model);
-  const large=name==='Skeleton_Golem';
+  const large=name==='Skeleton_Golem'||name==='Clanker';
   const bounds=new T.Box3().setFromObject(model),height=bounds.getSize(new T.Vector3()).y;
-  model.scale.setScalar((large?3.65:name==='BlackKnight'?4.16:2.05)/height);
+  const targetHeight=name==='WindGuard'?2.5:name==='WindScout'?1.85:name==='WindTech'?1.95:name==='Clanker'?4.2:(large?3.65:name==='BlackKnight'?4.16:2.05);
+  model.scale.setScalar(targetHeight/height);
   const held=new T.Group();const slot=bone(model,'handslot.r');(slot||model).add(held);
   const offhand=new T.Group();bone(model,'handslot.l').add(offhand);
-  const r={model,name,large,held,offhand,layered:name==='Knight',mixer:new T.AnimationMixer(model),phase:0,kick:0,current:null,base:null,dead:false,hit:0,attackLeft:0,
+  const r={model,name,large,held,offhand,layered:name==='Knight',mixer:new T.AnimationMixer(model),phase:0,kick:0,current:null,base:null,dead:false,hit:0,attackLeft:0,ownedMaterials:[],ownedGeometries:[],
     legs:[bone(model,'upperleg.l'),bone(model,'upperleg.r')],arms:[bone(model,'upperarm.l'),bone(model,'upperarm.r')],forearms:[bone(model,'lowerarm.l'),bone(model,'lowerarm.r')],wrists:[bone(model,'wrist.l'),bone(model,'wrist.r')],chest:bone(model,'chest'),overlay:[]};
   actor.userData.rig=r;locomotion(r,'Idle_A');r.mixer.update(0);
 }
@@ -70,8 +77,29 @@ export function createCreature(type){
     const r=root.userData.rig;r.layered=true;r.current=null;locomotion(r,'Idle_A');
     root.userData.profile={stance:'Melee_2H_Idle'};r.upperIdle=action(r,'Melee_2H_Idle',false,'upper');return root;
   }
-  install(root,({brute:'Skeleton_Warrior',runner:'Skeleton_Rogue',spitter:'Skeleton_Mage',boss:'Skeleton_Golem',necromancer:'Necromancer'})[type]||'Skeleton_Warrior');
-  mountWeapon(root,({brute:'Skeleton_Blade',runner:'Skeleton_Dagger',spitter:'Skeleton_Staff',boss:'Skeleton_Golem_Axe',necromancer:'Skeleton_Staff'})[type]);return root;
+  const modelName=({brute:'Skeleton_Warrior',runner:'Skeleton_Rogue',spitter:'Skeleton_Mage',boss:'Skeleton_Golem',outpostBoss:'Clanker',necromancer:'Necromancer',windGuard:'WindGuard',windScout:'WindScout',windTech:'WindTech'})[type]||'Skeleton_Warrior';
+  install(root,modelName);
+  mountWeapon(root,({brute:'Skeleton_Blade',runner:'Skeleton_Dagger',spitter:'Skeleton_Staff',boss:'Skeleton_Golem_Axe',necromancer:'Skeleton_Staff',windGuard:'Skeleton_Blade',windScout:'Skeleton_Dagger',windTech:'Skeleton_Staff'})[type]);return root;
+}
+
+export function styleOutpostCreature(actor,role){
+  const r=actor.userData.rig;if(!r)return;
+  r.role=role;r.ownedMaterials=[];r.ownedGeometries=[];
+  const tint=role==='guard'?0x8fb9ac:role==='scout'?0xd7e89d:0x80a9cf;
+  r.model.traverse(o=>{if(!o.isMesh)return;const recolor=m=>{const copy=m.clone();copy.color?.multiply(new T.Color(tint));copy.metalness=Math.min(1,(copy.metalness||0)+.18);copy.roughness=Math.max(.38,(copy.roughness||.8)-.12);r.ownedMaterials.push(copy);return copy};o.material=Array.isArray(o.material)?o.material.map(recolor):recolor(o.material)});
+  if(role==='guard'){
+    const shield=weapons.get('shield_round')?.clone(true);if(shield){shield.scale.setScalar(1.18);r.offhand.add(shield)}
+    const rimMat=new T.MeshBasicMaterial({color:0x8cf0d7,transparent:true,opacity:.75});const rim=new T.Mesh(new T.TorusGeometry(.31,.055,8,16),rimMat);rim.position.set(0,1.02,.04);rim.rotation.x=Math.PI/2;r.ownedGeometries.push(rim.geometry);r.ownedMaterials.push(rimMat);actor.add(rim);
+  }else if(role==='scout'){
+    const off=weapons.get('Skeleton_Dagger')?.clone(true);if(off){off.scale.setScalar(1.12);r.offhand.add(off)}
+    const sailMat=new T.MeshStandardMaterial({color:0xe3f4b4,emissive:0x799d68,emissiveIntensity:.25,roughness:.5,side:T.DoubleSide});
+    const sail=new T.Mesh(new T.PlaneGeometry(.62,.9),sailMat);sail.position.set(0,1.05,-.18);sail.rotation.y=Math.PI;sail.rotation.z=.18;actor.add(sail);r.ownedGeometries.push(sail.geometry);r.ownedMaterials.push(sailMat);
+  }else{
+    r.held.scale.setScalar(1.15);
+    const coilMat=new T.MeshStandardMaterial({color:0x93d6f0,emissive:0x2e7899,emissiveIntensity:.5,metalness:.6,roughness:.35});
+    const coil=new T.Mesh(new T.TorusGeometry(.27,.055,8,18),coilMat);coil.position.set(0,1.05,-.18);coil.rotation.x=Math.PI/2;actor.add(coil);r.ownedGeometries.push(coil.geometry);r.ownedMaterials.push(coilMat);
+    const packMat=new T.MeshStandardMaterial({color:0x496d86,metalness:.55,roughness:.4});const pack=new T.Mesh(new T.BoxGeometry(.36,.42,.16),packMat);pack.position.set(0,1.02,-.22);actor.add(pack);r.ownedGeometries.push(pack.geometry);r.ownedMaterials.push(packMat);
+  }
 }
 export function setEnemyPresentation(actor,attack,boss){
   const r=actor.userData.rig;if(!r)return;
@@ -121,8 +149,8 @@ export function kickActor(actor,rate=1){const r=actor.userData.rig;if(!r||r.dead
 export function hitActor(actor,strength=.55){const r=actor.userData.rig;if(!r||r.dead||r.hit>0)return;const shield=!!(r.layered&&actor.userData.profile?.offhand),duration=shield?.34:.16+strength*.14;r.hit=duration;r.hitAction=action(r,shield?'Melee_Block_Hit':'Hit_A',true,r.layered?'upper':'full');if(r.hitAction){r.hitAction.time=Math.min(shield?.1:.08,r.hitAction.getClip().duration*.22);r.hitAction.setEffectiveWeight(shield?Math.min(1,strength+.25):strength);r.hitAction.fadeIn(.025)}}
 export function dieActor(actor){const r=actor.userData.rig;if(!r||r.dead)return;r.dead=true;r.mixer.stopAllAction();action(r,'Death_A',true)}
 export function resetActor(actor){const r=actor.userData.rig;restore(r);r.dead=false;r.kick=r.hit=r.attackLeft=0;r.mixer.stopAllAction();r.current=null;locomotion(r,'Idle_A');actor.visible=true}
-function disposeRig(r){r.mixer.stopAllAction();r.mixer.uncacheRoot(r.model);for(const m of r.ownedMaterials||[])m.dispose();const skeletons=new Set();r.model.traverse(o=>{if(o.isSkinnedMesh)skeletons.add(o.skeleton)});for(const skeleton of skeletons)skeleton.dispose()}
-export function disposeActor(actor){disposeRig(actor.userData.rig);actor.removeFromParent()}
+function disposeRig(r){r.mixer.stopAllAction();r.mixer.uncacheRoot(r.model);for(const m of r.ownedMaterials||[])m.dispose();for(const g of r.ownedGeometries||[])g.dispose();const skeletons=new Set();r.model.traverse(o=>{if(o.isSkinnedMesh)skeletons.add(o.skeleton)});for(const skeleton of skeletons)skeleton.dispose()}
+export function disposeActor(actor){if(actor.userData.rig)disposeRig(actor.userData.rig);actor.removeFromParent()}
 function restore(r){for(const [b,q] of r.overlay)b.quaternion.copy(q);r.overlay.length=0}
 function pose(r,b,x,y=0,z=0){if(!b)return;r.overlay.push([b,b.quaternion.clone()]);b.rotateX(x);b.rotateY(y);b.rotateZ(z)}
 function pointBone(actor,r,b,child,target){
@@ -162,9 +190,23 @@ export function animateActor(actor,dt,time,speed=0){
   }
   r.kick=Math.max(0,r.kick-dt*4.5);
   // Only the upper body is layered procedurally; the supplied rig drives the feet.
-  const armed=actor.userData.isHero,melee=armed?actor.userData.weapon===3:['brute','runner','boss'].includes(actor.userData.type);
+  const armed=actor.userData.isHero,melee=armed?actor.userData.weapon===3:['brute','runner','boss','outpostBoss','windGuard','windScout'].includes(actor.userData.type);
   const swing=Math.sin((1-r.kick)*Math.PI)*Number(r.kick>0);
   const grip=actor.userData.profile?.grip;
+  const windAction=actor.userData.type==='outpostBoss'?r.enemyPresentation:null;
+  if(windAction&&['cannon','rotor','vortex','overload'].includes(windAction.kind)){
+    const warning=windAction.phase==='warning',p=warning?1-Math.max(0,windAction.left)/(windAction.warningDuration||1):1;
+    const ease=p*p*(3-2*p),active=windAction.phase==='attack';
+    if(windAction.kind==='cannon'){
+      pose(r,r.chest,-.12*ease,0,0);pose(r,r.arms[0],-.55*ease,0,-.22);pose(r,r.arms[1],-.55*ease,0,.22);
+    }else if(windAction.kind==='rotor'){
+      pose(r,r.chest,0,(active?time*5.2:ease*.7),0);pose(r,r.arms[0],-.25,0,-1.05*ease);pose(r,r.arms[1],-.25,0,1.05*ease);
+    }else if(windAction.kind==='vortex'){
+      pose(r,r.chest,.16*ease,0,0);pose(r,r.arms[0],-.18,0,-1.25*ease);pose(r,r.arms[1],-.18,0,1.25*ease);
+    }else{
+      pose(r,r.chest,-.2*ease,Math.sin(time*8)*.05,0);pose(r,r.arms[0],-.9*ease,0,-.45);pose(r,r.arms[1],-.9*ease,0,.45);
+    }
+  }
   if(armed&&!melee&&actor.userData.weapon!==2){
     for(let i=0;i<2;i++){if(grip==='oneHand'&&i===0)continue;const shoulder=actor.worldToLocal(r.arms[i].getWorldPosition(new T.Vector3()));
       pointBone(actor,r,r.arms[i],r.forearms[i],new T.Vector3(shoulder.x,shoulder.y-.04,.26-r.kick*.06));
@@ -184,7 +226,7 @@ export function animateActor(actor,dt,time,speed=0){
     pointBone(actor,r,r.forearms[1],r.wrists[1],new T.Vector3(-.4+.9*swing,shoulder.y+.12,.75));
   }
   if(!armed&&!melee&&r.kick>0)pose(r,r.arms[1],-.6*swing);
-  if(r.furnaceRole==='runner'&&r.enemyPresentation?.phase==='warning')pose(r,r.chest,.32);
+  if((r.furnaceRole==='runner'||r.role==='scout')&&r.enemyPresentation?.phase==='warning')pose(r,r.chest,.32);
   // KayKit's hand-slot axes differ from weapon mesh axes; keep the muzzle forward.
   actor.updateMatrixWorld(true);
   const facing=actor.getWorldQuaternion(new T.Quaternion());

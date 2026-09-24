@@ -76,11 +76,9 @@ export class EffectsSystem{
   updateEnemyStatus(enemy,time){
     const status=enemy.statusVfx;if(!status)return;
     status.recovery.visible=enemy.recovery>0&&!enemy.dead;
-    status.shield.visible=status.recovery.visible;
-    if(status.shield.visible){
-      status.shield.rotation.y=time*.8;
-      status.shield.material.opacity=.2+.07*(.5+.5*Math.sin(time*5));
-    }
+    // Only the shared boss counter effect shows a spherical break flash.
+    // Ordinary recovery keeps its floor marker without implying a shield.
+    status.shield.visible=false;
     status.charge.visible=!!enemy.rangedWindup&&!enemy.dead&&!enemy.stunned;
     if(status.charge.visible){
       const progress=1-Math.max(0,enemy.attack)/enemy.rangedWindup.duration;

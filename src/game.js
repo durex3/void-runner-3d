@@ -18,9 +18,13 @@ import {InputController} from './input-controller.js';
 import {createSceneRuntime,createRing} from './scene-runtime.js';
 import {GameView} from './ui.js';
 import {createUpgradeChoices} from './upgrades.js';
-import {LEVELS,FURNACE_WAVES,FurnaceCycle} from './levels.js';
+import {LEVELS,FURNACE_WAVES,OUTPOST_WAVES,OUTPOST_ENEMY_ROLES,FurnaceCycle} from './levels.js';
 import {createFurnaceWorld} from './furnace-world.js';
 import {FurnaceCombat} from './furnace-combat.js';
+import {createOutpostWorld} from './outpost-world.js';
+import {OutpostCombat} from './outpost-combat.js';
+import {BossDamageAccess} from './boss-damage-access.js';
+import {createLevelRuntimes} from './level-runtime.js';
 import {RunTelemetry} from './run-telemetry.js';
 import {armShieldCounter} from './knight-upgrades.js';
 import {KnightVfx} from './knight-vfx.js';
@@ -60,7 +64,7 @@ export class RelicWorkshopGame{
     document.body.dataset.actors='loaded';
     this.view.setBest(this.best);
     this.setupRuntime();
-    for(;;){try{this.furnaceWorld=await createFurnaceWorld(this.scene);break}catch(error){console.error(error);this.view.setLoadError();await this.view.waitForRetry()}}
+    for(;;){try{this.furnaceWorld=await createFurnaceWorld(this.scene);this.outpostWorld=await createOutpostWorld(this.scene);this.levels=createLevelRuntimes(this);break}catch(error){console.error(error);this.view.setLoadError();await this.view.waitForRetry()}}
     await Promise.all([this.meleeVfx.ready,this.remoteVfx.ready,preloadProjectileAssets(),this.effects.ready,preloadGardenEffects()]);
     document.body.dataset.effects='loaded';
     this.bindControls();
@@ -100,8 +104,10 @@ export class RelicWorkshopGame{
     this.scene.add(this.ruinsRoot);
     this.furnaceCycle=new FurnaceCycle();
     this.furnaceCombat=new FurnaceCombat(this);
+    this.outpostCombat=new OutpostCombat(this);
     this.hero=Actors.createHero(this.scene).hero;
     this.hero.add(createRing(.8,.05,0xffffff));
+    this.bossDamageAccess=new BossDamageAccess(this);
     this.effects=new EffectsSystem({scene:this.scene,animateActor:Actors.animateActor,disposeActor:Actors.disposeActor});
     this.meleeVfx=new MeleeVfx({effects:this.effects,camera:this.camera});
     this.knightVfx=new KnightVfx(this.effects);
@@ -128,12 +134,13 @@ export class RelicWorkshopGame{
     this.input=new InputController({root:this.app,onDash:()=>this.dash(),onPause:fromBlur=>{if(!fromBlur||this.state.mode==='playing')this.pause()},onWeapon:slot=>{if(['title','playing','paused'].includes(this.state.mode))this.equip(slot)}});
   }
 
-  readBest(){try{return Number(localStorage.getItem(this.state.chapter==='furnace'?'ember-best-furnace':'ember-best'))||0}catch{return 0}}
-  saveBest(){try{localStorage.setItem(this.state.chapter==='furnace'?'ember-best-furnace':'ember-best',this.best)}catch{}}
+  bestKey(){return ({ruins:'ember-best',furnace:'ember-best-furnace',outpost:'ember-best-outpost'})[this.state.chapter]||'ember-best'}
+  readBest(){try{return Number(localStorage.getItem(this.bestKey()))||0}catch{return 0}}
+  saveBest(){try{localStorage.setItem(this.bestKey(),this.best)}catch{}}
 
   chooseLevel(id){
     if(this.state.mode!=='title'||!LEVELS[id])return false;
-    this.state.chapter=id;this.ruinsRoot.visible=id==='ruins';this.furnaceWorld.root.visible=id==='furnace';
+    this.state.chapter=id;this.level=this.levels?.[id]||this.levels?.ruins;this.ruinsRoot.visible=id==='ruins';this.furnaceWorld.root.visible=id==='furnace';this.outpostWorld.root.visible=id==='outpost';
     this.best=this.readBest();this.view.setBest(this.best);this.view.selectLevel(id);return true;
   }
 
@@ -167,6 +174,7 @@ export class RelicWorkshopGame{
   start(){
     this.clearRun();
     resetRunState(this.state);
+    this.level?.reset();
     this.quality?.reset();
     this.telemetry.reset({chapter:this.state.chapter,heroId:this.hero.userData.rig.name,heroLabel:HEROES[this.hero.userData.rig.name]?.label||this.hero.userData.rig.name});
     this.lastRunReport=null;
@@ -192,8 +200,10 @@ export class RelicWorkshopGame{
 
   clearRun(){
     this.audio.stopAll();
-    this.furnaceCombat.reset();this.furnaceCycle.reset();this.state.furnaceStatus='';
+    this.level?.cleanup();this.furnaceCombat.reset();this.furnaceCycle.reset();this.outpostCombat.reset();this.outpostWorld.wind.reset();this.state.furnaceStatus='';this.state.chapterStatus='';this.state.levelHud=null;
+    this.bossDamageAccess.reset();
     this.furnaceWorld.update(this.furnaceCycle,0);
+    this.outpostWorld.wind.updateVisual(0);
     this.combat.reset();
     this.garden.reset();
     this.pendingElite=null;
@@ -221,15 +231,11 @@ export class RelicWorkshopGame{
   }
 
   beginWave(){
-    if(this.state.chapter==='furnace'){
-      const wave=FURNACE_WAVES[this.state.wave-1];
-      this.state.remaining=wave.count;this.state.spawn=wave.grace;this.state.waveTime=0;
-      this.furnaceFormationAngle=null;
-      this.furnaceCycle.reset(wave.grace+2);
-      if([2,4,6].includes(this.state.wave))this.spawnEnemy(this.state.wave===4?'runner':'brute',true);
-      this.view.showToast(`第 ${this.state.wave} 波 · ${wave.label}`);
-      if(this.state.wave===8)this.spawnEnemy('boss');return;
-    }
+    if(this.level){this.level.beginWave();return}
+    this.beginWaveDefault();
+  }
+
+  beginWaveDefault(){
     this.state.remaining=this.state.wave===8?8:6+this.state.wave*3;
     this.state.spawn=.6;
     this.state.waveTime=0;
@@ -238,23 +244,36 @@ export class RelicWorkshopGame{
     if(this.state.wave===8)this.spawnEnemy('boss');
   }
 
-  spawnEnemy(force,elite=false,spawnAngle){
-    const furnace=this.state.chapter==='furnace',pool=FURNACE_WAVES[this.state.wave-1].pool;
-    const type=force||(furnace?pool[Math.floor(Math.random()*pool.length)]:(this.state.wave>2&&Math.random()<.27?'spitter':Math.random()<.3?'runner':'brute'));
+  spawnEnemy(...args){return this.level?.spawnEnemy(...args)??this.spawnEnemyBase(...args)}
+
+  spawnEnemyBase(force,elite=false,spawnAngle){
+    const furnace=this.state.chapter==='furnace',outpost=this.state.chapter==='outpost';
+    const wave=this.level?.getWave(this.state.wave);
+    const pool=wave?.pool||(furnace?FURNACE_WAVES[this.state.wave-1].pool:outpost?OUTPOST_WAVES[this.state.wave-1].pool:null);
+    const type=force||(pool?pool[Math.floor(Math.random()*pool.length)]:(this.state.wave>2&&Math.random()<.27?'spitter':Math.random()<.3?'runner':'brute'));
     const angle=spawnAngle??Math.random()*Math.PI*2;
-    const object=Actors.createCreature(furnace&&type==='boss'?'blackknight':elite&&type==='brute'?'necromancer':type);
+    const difficulty=this.level?.difficulty||{};
+    const outpostConfig=outpost?OUTPOST_ENEMY_ROLES[type]:null,outpostActor=outpostConfig?.actor;
+    const object=outpost&&type==='boss'?this.outpostWorld.createBoss():Actors.createCreature(furnace&&type==='boss'?'blackknight':elite&&type==='brute'?'necromancer':outpostActor||type);
+    if(outpostConfig)Actors.styleOutpostCreature(object,outpostConfig.role);
     if(furnace&&type!=='boss')Actors.styleFurnaceCreature(object,type);
-    object.position.set(Math.cos(angle)*20,0,Math.sin(angle)*20);
+    if(!(outpost&&type==='boss'))object.position.set(Math.cos(angle)*(difficulty.spawnRadius||20),0,Math.sin(angle)*(difficulty.spawnRadius||20));
     this.scene.add(object);
-    const size=type==='boss'?2.1:type==='runner'?.6:.85;
+    const size=type==='boss'?2.1:outpost&&type==='runner'?.68:outpost&&type==='spitter'?.82:type==='runner'?.6:.85;
     if(elite)this.addEliteCrown(object,type);
-    const hp=elite?150+this.state.wave*15:type==='boss'?1500:type==='runner'?25:45+this.state.wave*5;
-    const enemy={obj:object,type,elite,stunned:false,slow:0,hp,maxHp:hp,size,speed:type==='boss'?1.1:type==='runner'?3.5:1.6+this.state.wave*.06,attack:1.5};
-    enemy.customBoss=furnace&&type==='boss';
-    if(enemy.customBoss){enemy.size=1.3;enemy.hp=enemy.maxHp=2000;object.position.set(0,0,-16);this.state.bossStats={startedAt:this.state.time,damageByWeapon:{},damageByDevice:{},damageTaken:0,damageSources:{},actions:{},meleeDiagnostics:[]};this.telemetry.startBoss(this.state.time,'黑骑士')}
+    const hp=elite?150+this.state.wave*15:type==='boss'?(outpost?1800:1500):outpost&&type==='brute'?82+this.state.wave*7:outpost&&type==='runner'?34:outpost&&type==='spitter'?58:type==='runner'?25:45+this.state.wave*5;
+    const baseSpeed=outpost&&type==='brute'?1.38:outpost&&type==='runner'?4.15:type==='runner'?3.5:outpost&&type==='spitter'?1.25:1.6+this.state.wave*.06;
+    const enemy={obj:object,type,elite,stunned:false,slow:0,hp,maxHp:hp,size,speed:type==='boss'?1.1:baseSpeed*(type==='runner'?(difficulty.runnerScale||difficulty.speedScale||1):(difficulty.speedScale||1)),attack:1.5,contactDamage:type==='boss'?22:(outpost&&type==='runner'?13:difficulty.contactDamage||9),projectileSpeed:difficulty.projectileSpeed||5};
+    if(outpostConfig)enemy.role=outpostConfig.role;
+    enemy.customBoss=(furnace||outpost)&&type==='boss';enemy.outpostBoss=outpost&&type==='boss';
+    if(type==='boss'&&!furnace&&!outpost)enemy.bossPhase=1;
+    if(enemy.outpostBoss)enemy.bossPhase=1;
+    if(furnace&&enemy.customBoss){enemy.size=1.3;enemy.hp=enemy.maxHp=2000;object.position.set(0,0,-16);this.state.bossStats={startedAt:this.state.time,damageByWeapon:{},damageByDevice:{},damageTaken:0,damageSources:{},actions:{},meleeDiagnostics:[]};this.telemetry.startBoss(this.state.time,'黑骑士')}
+    if(enemy.outpostBoss){enemy.size=1.55;enemy.hp=enemy.maxHp=1800;object.position.set(0,0,-15);this.state.bossStats={startedAt:this.state.time,damageByWeapon:{},damageByDevice:{},damageTaken:0,damageSources:{},actions:{},meleeDiagnostics:[]};this.telemetry.startBoss(this.state.time,'哨站守卫 · Clanker')}
     else if(type==='boss')this.telemetry.startBoss(this.state.time,'骸骨巨像');
     this.effects.attachEnemyStatus(enemy);
     this.enemies.push(enemy);
+    if(type==='boss')this.bossDamageAccess.attach(enemy,this.state.chapter);
     return enemy;
   }
 
@@ -270,6 +289,10 @@ export class RelicWorkshopGame{
 
   damageEnemy(enemy,damage,source={}){
     if(enemy.dead||enemy.stunned)return;
+    if(enemy.outpostBoss&&enemy.phaseTransition<=0)this.outpostCombat.onBossHit(enemy,source);
+    const access=this.bossDamageAccess.evaluate(enemy,source),damageMultiplier=access.multiplier;
+    if(access.blocked&&this.state.time>=(enemy.damageAccessFeedback||0)){enemy.damageAccessFeedback=this.state.time+.18;this.effects.resistImpact(enemy)}
+    damage*=damageMultiplier;
     const applied=Math.min(enemy.hp,damage);
     this.telemetry.recordDamage(source,applied,{boss:enemy.type==='boss'||enemy.customBoss});
     if(enemy.customBoss&&this.state.bossStats&&applied>0){
@@ -277,14 +300,21 @@ export class RelicWorkshopGame{
       if(source.device){const labels={thorn:'自动弩台',electric:'雷鸣法典',blast:'炼金炸瓶'};const key=labels[source.device]||source.device;this.state.bossStats.damageByDevice[key]=(this.state.bossStats.damageByDevice[key]||0)+applied}
     }
     enemy.hp-=damage;
+    if(enemy.type==='boss'&&!enemy.customBoss&&enemy.bossPhase===1&&enemy.hp>0&&enemy.hp<=enemy.maxHp*.5){
+      enemy.bossPhase=2;enemy.attack=.35;enemy.volley=0;this.view.showToast('骸骨巨像进入狂骨阶段 · 弹幕与践踏加速',2.2);this.cameraKick=Math.max(this.cameraKick,.42);this.cameraKickDuration=.22;this.cameraKickTime=.22;
+    }
+    if(enemy.customBoss&&!enemy.outpostBoss&&enemy.bossPhase!==2&&enemy.hp>0&&enemy.hp<=enemy.maxHp*.5){
+      enemy.bossPhase=2;enemy.attack=.4;this.view.showToast('黑骑士进入双炉阶段 · 地火封位与连斩强化',2.2);this.cameraKick=Math.max(this.cameraKick,.45);this.cameraKickDuration=.24;this.cameraKickTime=.24;
+    }
+    if(enemy.outpostBoss&&enemy.bossPhase===1&&enemy.hp>0&&enemy.hp<=enemy.maxHp*.5)this.outpostCombat.enterPhaseTwo(enemy);
     const reaction=MELEE_FEEDBACK[source.model]?.reaction??.55;
     if(!(enemy.customBoss&&enemy.furnaceAction))Actors.hitActor(enemy.obj,reaction);
     this.effects.burst(enemy.obj.position,0xfbc47b,3);
-    if(enemy.elite&&enemy.hp<=enemy.maxHp*.3){this.furnaceCombat.cancel(enemy);enemy.hp=Math.max(1,enemy.hp);enemy.stunned=true;enemy.rangedWindup=null;this.effects.updateEnemyStatus(enemy,this.state.time);this.pendingElite=enemy;return}
+    if(enemy.elite&&enemy.hp<=enemy.maxHp*.3){this.cancelSpecialEnemy(enemy);enemy.hp=Math.max(1,enemy.hp);enemy.stunned=true;enemy.rangedWindup=null;this.effects.updateEnemyStatus(enemy,this.state.time);this.pendingElite=enemy;return}
     if(enemy.hp>0)return;
     enemy.dead=true;
     if(enemy.type==='boss'||enemy.customBoss)this.telemetry.endBoss(this.state.time);
-    this.furnaceCombat.cancel(enemy);
+    this.cancelSpecialEnemy(enemy);
     enemy.rangedWindup=null;
     this.effects.updateEnemyStatus(enemy,this.state.time);
     this.garden.cancelStomps(enemy);
@@ -299,6 +329,8 @@ export class RelicWorkshopGame{
     this.effects.addCorpse(enemy.obj);
     this.effects.burst(enemy.obj.position);
   }
+
+  cancelSpecialEnemy(enemy){this.furnaceCombat.cancel(enemy);this.outpostCombat.cancel(enemy)}
 
   captureChoice(){
     const enemy=this.pendingElite;if(!enemy)return;
@@ -357,13 +389,14 @@ export class RelicWorkshopGame{
 
   finish(win){
     this.state.mode=win?'won':'lost';
-    this.audio.stopAll();this.furnaceCombat.reset();this.furnaceCycle.suppress();this.furnaceWorld.update(this.furnaceCycle,this.state.time);
+    this.audio.stopAll();this.level?.cleanup();this.furnaceCombat.reset();this.furnaceCycle.suppress();this.furnaceWorld.update(this.furnaceCycle,this.state.time);this.outpostCombat.reset();this.outpostWorld.wind.suppress();this.outpostWorld.wind.updateVisual(this.state.time);
+    this.bossDamageAccess.reset();
     if(!win)Actors.dieActor(this.hero);
     this.input.clear();
     this.best=Math.max(this.best,this.state.kills);
     this.saveBest();
     this.lastRunReport=this.telemetry.finish({win,state:this.state,garden:this.garden});
-    this.view.showFinish({win,state:this.state,garden:this.garden,best:this.best,bossStats:this.state.bossStats,runReport:this.lastRunReport,onRestart:()=>this.start(),onChangeHero:()=>this.returnToTitle(),onNext:()=>{this.returnToTitle();this.chooseLevel('furnace');this.start()}});
+    this.view.showFinish({win,state:this.state,garden:this.garden,best:this.best,bossStats:this.state.bossStats,runReport:this.lastRunReport,onRestart:()=>this.start(),onChangeHero:()=>this.returnToTitle(),onNext:()=>{this.returnToTitle();const next=this.state.chapter==='ruins'?'furnace':this.state.chapter==='furnace'?'outpost':null;if(next){this.chooseLevel(next);this.start()}}});
   }
 
   pause(){
@@ -380,11 +413,12 @@ export class RelicWorkshopGame{
   dash(){
     if(this.state.mode!=='playing'||this.state.dash>0)return;
     this.state.dash=3;
-    this.state.inv=.4;
+    this.state.inv=this.state.chapter==='outpost'?.45:.4;
     const from=this.hero.position.clone();
-    this.hero.position.addScaledVector(this.lastDirection,3.4);
+    this.hero.position.addScaledVector(this.lastDirection,this.state.chapter==='outpost'?3.8:3.4);
     if(this.hero.position.length()>20)this.hero.position.setLength(20);
     this.garden.onDash(from,this.hero.position);
+    if(this.state.chapter==='outpost')this.outpostCombat.onDash(from,this.hero.position);
     this.effects.burst(this.hero.position);
     this.audio.play(320,.15);
   }
@@ -401,14 +435,10 @@ export class RelicWorkshopGame{
     this.updateDrops(dt);
     if(this.state.mode!=='playing')return;
     this.garden.step(dt,this.drops,amount=>this.hurt(amount));
-    if(this.state.chapter==='furnace'&&this.state.mode==='playing'){
-      const boss=this.enemies.find(e=>e.customBoss&&!e.dead);
-      if(this.state.wave<8||boss?.furnaceAction?.phase==='forge')this.furnaceCycle.step(dt,this.state.wave);
-      else this.furnaceCycle.suppress();
-      this.state.furnaceStatus=this.furnaceCycle.phase==='warning'?'地火预警 · 离开炉栅':this.furnaceCycle.phase==='burn'?'炉栅喷火 · 绕行石板':'';
-      if(boss?.furnaceAction?.ground?.visible)this.state.furnaceStatus=this.furnaceCycle.phase==='warning'?'地火预警 · 炉栅与锁定圆圈':'地火燃烧 · 炉栅与锁定圆圈';
-      this.furnaceWorld.update(this.furnaceCycle,this.state.time);
-      if(this.furnaceCycle.hits(this.hero.position))this.hurt(10,'furnace-vent');
+    if(this.state.mode==='playing'){
+      this.level?.step(dt);this.bossDamageAccess.step(dt,this.state.time);
+      const levelHud=this.level?.getHudState()||{},damageAccess=this.bossDamageAccess.getHudState();
+      this.state.levelHud={...levelHud,damageAccess,status:levelHud.status||damageAccess?.status||''};
     }
     if(this.state.mode!=='playing')return;
     if(this.pendingElite){this.captureChoice();return}
@@ -441,7 +471,7 @@ export class RelicWorkshopGame{
   updateWaveSpawning(dt){
     this.state.spawn-=dt;
     if(this.state.remaining>0&&this.state.spawn<=0){
-      const wave=this.state.chapter==='furnace'?FURNACE_WAVES[this.state.wave-1]:null;
+      const wave=this.level?.getWave(this.state.wave)||null;
       const index=wave?wave.count-this.state.remaining:0;
       const formation=wave?.formation,slot=formation&&index%formation.length,entry=formation?.[slot];
       if(entry){
@@ -461,9 +491,7 @@ export class RelicWorkshopGame{
     for(const enemy of this.enemies){
       if(enemy.dead||enemy.stunned)continue;
       if(this.state.mode!=='playing')break;
-      if(this.state.chapter==='furnace'&&(enemy.customBoss||enemy.type==='runner')){
-        this.furnaceCombat.step(enemy,dt);this.effects.updateEnemyStatus(enemy,this.state.time);continue;
-      }
+      if(this.level?.stepEnemy(enemy,dt))continue;
       if(enemy.type==='boss'&&(enemy.recovery>0||this.garden.effects.some(f=>f.stomp&&f.source===enemy))){
         enemy.recovery=Math.max(0,(enemy.recovery||0)-dt);
         this.effects.updateEnemyStatus(enemy,this.state.time);
@@ -490,7 +518,7 @@ export class RelicWorkshopGame{
       enemy.obj.rotation.y=Math.atan2(facing.x,facing.z);
       Actors.animateActor(enemy.obj,dt,this.state.time,!enemy.rangedWindup&&(enemy.type!=='spitter'||distance>8)?speed:0);
       enemy.attack-=dt;enemy.melee=(enemy.melee||0)-dt;
-      if(distance<enemy.size+.45){this.hurt(enemy.type==='boss'?22:9,enemy.customBoss?'boss-contact':'enemy-contact');if(enemy.melee<=0){Actors.kickActor(enemy.obj);enemy.melee=.8}}
+      if(distance<enemy.size+.45){this.hurt(enemy.contactDamage??(enemy.type==='boss'?22:9),enemy.customBoss?'boss-contact':'enemy-contact');if(enemy.melee<=0){Actors.kickActor(enemy.obj);enemy.melee=.8}}
       if(enemy.type==='spitter'||enemy.type==='boss'){
         const duration=enemy.type==='boss'?.6:.45;
         if(!enemy.rangedWindup&&enemy.attack<=duration){
@@ -525,20 +553,20 @@ export class RelicWorkshopGame{
 
   fireEnemyProjectiles(enemy,direction){
     if(this.enemies.some(e=>e.customBoss&&!e.dead&&e.recovery>0)){enemy.attack=1;return}
-    enemy.attack=enemy.type==='boss'?2:3;
+    enemy.attack=enemy.type==='boss'?(enemy.bossPhase>=2?1.55:2):3;
     const boss=enemy.type==='boss',pattern=enemy.rangedWindup?.pattern||'ring';
     const angles=boss?bossShotAngles(pattern):[0];
     for(const angle of angles){
       const shotDirection=boss&&pattern==='ring'?new T.Vector3(Math.sin(angle),0,Math.cos(angle)):direction.clone().applyAxisAngle(new T.Vector3(0,1,0),angle);
-      const velocity=shotDirection.multiplyScalar(boss&&pattern==='fan'?7.5:5),object=enemyProjectile(enemy.obj.position.clone().setY(.7),velocity);
-      this.scene.add(object);Actors.kickActor(enemy.obj);this.hazards.push({obj:object,v:velocity,life:6,source:enemy});
+      const velocity=shotDirection.multiplyScalar(boss?(pattern==='fan'?(enemy.bossPhase>=2?8.2:7.5):(enemy.bossPhase>=2?5.6:5)):(enemy.projectileSpeed||5)),object=enemyProjectile(enemy.obj.position.clone().setY(.7),velocity);
+      this.scene.add(object);Actors.kickActor(enemy.obj);this.hazards.push({obj:object,v:velocity,life:6,source:enemy,push:enemy.role==='tech'?1.8:0,hit:false});
     }
     if(boss)enemy.volley=(enemy.volley||0)+1;
   }
 
   updateHazards(dt){
     const heroCenter=this.hero.position.clone().setY(.7);
-    for(const hazard of this.hazards){hazard.life-=dt;hazard.obj.position.addScaledVector(hazard.v,dt);if(hazard.obj.position.distanceTo(heroCenter)<.65){this.hurt(12,hazard.source?.customBoss?'boss-projectile':'enemy-projectile');hazard.life=0}}
+    for(const hazard of this.hazards){hazard.life-=dt;hazard.obj.position.addScaledVector(hazard.v,dt);if(hazard.obj.position.distanceTo(heroCenter)<.65){if(!hazard.hit&&hazard.push){const pushDir=hazard.v.clone().setY(0).normalize();this.hero.position.addScaledVector(pushDir,hazard.push);if(this.hero.position.length()>20)this.hero.position.setLength(20);hazard.hit=true}this.hurt(hazard.push?8:12,hazard.source?.customBoss?'boss-projectile':hazard.push?'outpost-windbolt':'enemy-projectile');hazard.life=0}}
     this.hazards=this.hazards.filter(hazard=>{if(hazard.life>0)return true;this.scene.remove(hazard.obj);hazard.obj.userData.dispose?.();return false});
   }
 
@@ -556,7 +584,8 @@ export class RelicWorkshopGame{
 
   advanceWaveIfCleared(){
     if(this.state.remaining!==0||!this.enemies.every(enemy=>enemy.dead))return;
-    if(this.state.wave===8){this.finish(true);return}
+    const finalWave=this.level?.finalWave||8;
+    if(this.state.wave===finalWave){this.finish(true);return}
     this.state.wave++;this.state.hp=Math.min(this.state.maxHp,this.state.hp+12);this.beginWave();
   }
 
@@ -576,11 +605,11 @@ export class RelicWorkshopGame{
   }
 
   updateCamera(dt,now){
-    this.world.flame.scale.y=.7+Math.sin(now*.006)*.15;this.world.flame.rotation.y=now*.001;
+    if(this.world.flame){this.world.flame.scale.y=.7+Math.sin(now*.006)*.15;this.world.flame.rotation.y=now*.001}
     if(this.state.mode==='title'){
       this.hero.position.set(4,0,2);this.hero.rotation.y=now*.0003;Actors.animateActor(this.hero,dt,now/1000,0);this.camera.position.set(30,31,37);this.camera.lookAt(0,0,0);return;
     }
-    const follow=this.state.chapter==='furnace'&&this.camera.aspect<.85?1:.35;
+    const follow=this.state.chapter!=='ruins'&&this.camera.aspect<.85?1:.35;
     const target=this.hero.position.clone().multiplyScalar(follow);
     this.camera.position.lerp(new T.Vector3(target.x+20,27,target.z+24),1-Math.exp(-dt*4));
     this.cameraKickTime=Math.max(0,this.cameraKickTime-dt);
@@ -599,7 +628,7 @@ export class RelicWorkshopGame{
     if(!new URLSearchParams(location.search).has('test'))return;
     const game=this;
     window.__game={
-      chooseLevel:id=>game.chooseLevel(id),furnaceCycle:this.furnaceCycle,furnaceCombat:this.furnaceCombat,furnaceWorld:this.furnaceWorld,beginWave:()=>game.beginWave(),pause:()=>game.pause(),dash:()=>game.dash(),setManual:value=>{game.testLab={manual:value}},render:()=>{game.updateCamera(1,performance.now());game.view.renderHud(game.state,game.garden,game.enemies,game.currentStats(),game.currentDevices());game.renderer.render(game.scene,game.camera)},
+      chooseLevel:id=>game.chooseLevel(id),furnaceCycle:this.furnaceCycle,furnaceCombat:this.furnaceCombat,furnaceWorld:this.furnaceWorld,outpostWorld:this.outpostWorld,outpostCombat:this.outpostCombat,bossDamageAccess:this.bossDamageAccess,beginWave:()=>game.beginWave(),pause:()=>game.pause(),dash:()=>game.dash(),setManual:value=>{game.testLab={manual:value}},render:()=>{game.updateCamera(1,performance.now());game.view.renderHud(game.state,game.garden,game.enemies,game.currentStats(),game.currentDevices());game.renderer.render(game.scene,game.camera)},
       THREE:T,actors:Actors,state:this.state,hero:this.hero,input:this.input,garden:this.garden,combat:this.combat,effects:this.effects,meleeVfx:this.meleeVfx,remoteVfx:this.remoteVfx,audio:this.audio,quality:this.quality,
       get enemies(){return game.enemies},get drops(){return game.drops},get bullets(){return game.combat.bullets},get hazards(){return game.hazards},get corpses(){return game.effects.corpses},
       selectHero:Actors.selectHero,chooseHero:name=>game.chooseHero(name),returnToTitle:()=>game.returnToTitle(),equip:slot=>game.equip(slot),attack:()=>game.attack(),tick:dt=>game.tick(dt),damageEnemy:(...args)=>game.damageEnemy(...args),hurt:(...args)=>game.hurt(...args),levelUp:()=>game.levelUp(),finish:win=>game.finish(win),start:()=>game.start(),spawnEnemy:(...args)=>game.spawnEnemy(...args),renderer:this.renderer,scene:this.scene,camera:this.camera,get lastMeleeFeedback(){return game.lastMeleeFeedback},get bossStats(){return game.state.bossStats},get telemetry(){return game.telemetry},get runReport(){return game.lastRunReport},

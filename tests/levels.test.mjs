@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {FurnaceCycle,FURNACE_WAVES,VENTS,insideVent} from '../src/levels.js';
+import {FurnaceCycle,RUINS_WAVES,FURNACE_WAVES,VENTS,insideVent} from '../src/levels.js';
 import * as T from 'three';
 import {FurnaceCombat,FORGE_TARGET,inSlash,segmentDistance} from '../src/furnace-combat.js';
 import {WeaponCombat} from '../src/combat.js';
@@ -20,17 +20,17 @@ function bossFixture(){
   return {game,enemy,ai,strike};
 }
 
-test('greatsword can punish recovery after approach, including an existing cooldown',()=>{
+test('greatsword can punish a countered charge after approach, including an existing cooldown',()=>{
   // Isolated timing probe, not a human playtest: walk straight toward a recovering
   // boss at base speed, stop at distance 3, and use the real attack queue/AI.
-  for(const kind of ['slash','charge','forge'])for(const rate of [1,1.6])for(const distance of [3,6,9,12])for(const cooling of [false,true]){
+  for(const kind of ['charge'])for(const rate of [1,1.6])for(const distance of [3,6,9,12])for(const cooling of [false,true]){
     const {game,enemy,ai}=bossFixture(),profile=HEROES.Knight.weapons[1];
     Object.assign(game.state,{rate,shot:cooling?profile.interval/rate:0});
     game.hero.userData.profile=profile;game.hero.position.set(0,0,distance);
     const hits=[];
     const weapon=new WeaponCombat({...game,enemies:()=>[enemy],garden:{combos:new Set(),onShot(){}},
       damage:()=>{if(enemy.furnaceAction?.phase==='recovery')hits.push(game.state.time)}});
-    ai.begin(enemy,kind);ai.recover(enemy,enemy.furnaceAction);
+    ai.begin(enemy,kind);enemy.furnaceAction.ventStaggered=true;ai.recover(enemy,enemy.furnaceAction);
     const duration=enemy.recovery,dt=1/120;
     while(enemy.furnaceAction){
       game.state.time+=dt;game.state.shot-=dt;
@@ -53,12 +53,14 @@ test('black knight control indicators and slow expire after a mace hit',()=>{
   assert.equal(enemy.stagger,0);assert.equal(enemy.slow,0);assert.equal(enemy.hitStop,0);
 });
 
-test('slash recovery is shorter while charge and forge keep their counterattack window',()=>{
+test('only a vent-countered charge grants the black knight a long recovery',()=>{
   const {enemy,ai}=bossFixture();
-  for(const [kind,duration] of [['slash',1.8],['charge',2.4],['forge',2.4]]){
+  for(const kind of ['slash','charge','forge']){
     ai.begin(enemy,kind);ai.recover(enemy,enemy.furnaceAction);
-    assert.equal(enemy.recovery,duration);
+    assert.equal(enemy.furnaceAction.phase,'resume');assert.equal(enemy.recovery,0);
   }
+  ai.begin(enemy,'charge');enemy.furnaceAction.ventStaggered=true;ai.recover(enemy,enemy.furnaceAction);
+  assert.equal(enemy.furnaceAction.phase,'recovery');assert.equal(enemy.recovery,2.6);
   ai.reset();
 });
 
@@ -67,8 +69,8 @@ test('ranged players get a longer charge lane without changing melee recovery',(
   game.hero.userData.profile=HEROES.Druid.weapons[2];
   ai.begin(enemy,'charge');
   assert.equal(enemy.furnaceAction.length,14);
-  ai.recover(enemy,enemy.furnaceAction);
-  assert.equal(enemy.recovery,1.9);
+  enemy.furnaceAction.ventStaggered=true;ai.recover(enemy,enemy.furnaceAction);
+  assert.equal(enemy.recovery,2.1);
   ai.reset();
 });
 
@@ -84,7 +86,7 @@ test('two-hit slash snapshots half health and locks a fresh second warning',()=>
   assert.equal(enemy.recovery,0);assert.equal(second.direction.x,1);
   game.hero.position.set(-4,0,0);ai.step(enemy,.1);assert.equal(second.direction.x,1);
   second.phase='attack';second.left=.01;ai.step(enemy,.02);
-  assert.equal(second.phase,'recovery');assert.equal(enemy.recovery,1.8);
+  assert.equal(second.phase,'resume');assert.equal(enemy.recovery,0);
   ai.reset();assert.equal(game.scene.children.length,0);
 });
 
@@ -97,7 +99,7 @@ test('forge locks its target, warns fully and damages only once per cast',()=>{
   game.hero.position.set(2,0,3);ai.step(enemy,.01);ai.step(enemy,.1);
   assert.equal(damage,FORGE_TARGET.damage);
   ai.recover(enemy,attack);assert.equal(attack.ground.visible,false);
-  ai.step(enemy,2.4);assert.equal(enemy.attack,0);assert.equal(enemy.furnaceAction,null);
+  ai.step(enemy,2.4);assert.equal(enemy.attack,.45);assert.equal(enemy.furnaceAction,null);
   assert.equal(game.scene.children.length,0);
 });
 
@@ -115,7 +117,7 @@ test('repeated mace hits cannot stall forge approach or preserve an expired slow
     ai.step(enemy,.01);if(enemy.furnaceAction?.phase==='forge')game.furnaceCycle.step(.01,8);
   }
   assert.ok(enemy.obj.position.distanceTo(start)>4);
-  assert.equal(enemy.furnaceAction.phase,'recovery');assert.equal(enemy.slow,0);
+  assert.ok(['resume','recovery'].includes(enemy.furnaceAction.phase));assert.equal(enemy.slow,0);
 });
 
 test('mace at the reported attack speed leaves pursuit time between hits',()=>{
@@ -150,6 +152,14 @@ test('furnace has eight paced encounters with a pre-boss breather',()=>{
   assert.equal(FURNACE_WAVES.length,8);
   assert.ok(FURNACE_WAVES[6].count<FURNACE_WAVES[5].count);
   assert.deepEqual(FURNACE_WAVES[0].pool,['brute']);
+});
+test('ruins has authored escalation before the boss',()=>{
+  assert.equal(RUINS_WAVES.length,8);
+  assert.deepEqual(RUINS_WAVES[0].pool,['brute']);
+  assert.ok(RUINS_WAVES[1].pool.includes('runner'));
+  assert.ok(RUINS_WAVES[2].pool.includes('spitter'));
+  assert.ok(RUINS_WAVES[6].grace>RUINS_WAVES[5].grace);
+  assert.ok(RUINS_WAVES[3].formation?.length>0&&RUINS_WAVES[5].formation?.length>0);
 });
 test('fire always warns, then burns, then releases',()=>{
   const cycle=new FurnaceCycle();

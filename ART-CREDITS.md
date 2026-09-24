@@ -12,9 +12,11 @@
 | [Skeletons 1.1 EXTRA](https://kaylousberg.itch.io/kaykit-skeletons) | Skeleton_Warrior、Skeleton_Rogue、Skeleton_Mage、Necromancer、Skeleton_Golem，敌人装备及玩家 Skeleton_Mace |
 | [Character Animations 1.1](https://kaylousberg.itch.io/kaykit-character-animations) | Rig_Medium_CombatMelee：骑士单手斜斩、单手下砸、双手下劈、双手持握、持盾及格挡受击 |
 | [Dungeon Pack 1.1 EXTRA](https://kaylousberg.itch.io/kaykit-dungeon-pack) | 熔炉要塞地砖、炉栅、墙、拱门、柱、旗帜、脚手架、火把与岩石 |
-| Mystery Monthly Series 5（[作者主页](https://kaylousberg.itch.io)） | September 2024 Black Knight：黑骑士角色与双手重剑；共用项目已有 Medium 骨骼动作 |
+| Mystery Monthly Series 5（[作者主页](https://kaylousberg.itch.io)） | July 2024 Combat Mech：第三关风蚀守卫；September 2024 Black Knight：第二关黑骑士；December 2024 Helpers A/B：第三关滑翔斥候、风塔技师；March 2025 Clanker：第三关 Boss；May 2025 Hiker：第三关哨站帐篷地标 |
 
 所用文件随附许可均为 **CC0**。EXTRA / FREE 原文件在 `references/purchased/`，Character Animations 源文件在桌面 `美术资源/KayKit_Character_Animations_1.1/` 内。运行副本在 `public/assets/kaykit/`。
+
+第三关运行副本单独位于 `public/assets/outpost/`，来源为用户提供的 `/Users/liugelong/Desktop/purchased/KayKit_Mystery_Monthly_Series_5/`。复制了 Combat Mech、Helpers A/B、Clanker GLB、Hiker Tent 的 glTF 依赖和 CC0 许可，清单见 [第三关资源清单](./public/assets/outpost/manifest.json)。三类普通敌人共享项目现有 KayKit Medium 骨骼动作，并以程序化风帆、线圈、盾牌和配色区分轮廓。
 
 - [模型、道具与基础动作来源清单](./public/assets/kaykit/manifest.json)
 - [近战动作来源清单](./public/assets/kaykit/combat-animation-manifest.json)

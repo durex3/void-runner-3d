@@ -1,6 +1,7 @@
 import * as T from 'three';
 import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
 import {scaledProp} from './relics.js';
+import {RUINS_COUNTER_PYLONS} from './boss-counter-rules.js';
 
 const stone=new T.MeshStandardMaterial({color:0x526567,roughness:1}),edge=new T.MeshStandardMaterial({color:0x77837a,roughness:1}),gold=new T.MeshStandardMaterial({color:0xbb9460,roughness:.65}),dark=new T.MeshStandardMaterial({color:0x243c40,roughness:1});
 const glow=new T.MeshBasicMaterial({color:0x70d1c0});
@@ -27,6 +28,12 @@ export function createWorld(scene){
     part(scene,box,edge,x,.25,z,1.8,.5,1.8);part(scene,pillar,stone,x,h/2+.5,z,1,h,1);part(scene,box,gold,x,h+.6,z,1.5,.28,1.5);
     if(i%3!==0){const roof=part(scene,box,edge,x,h+.95,z,3.8,.5,1.4);roof.rotation.y=a}
     const crystal=part(scene,new T.OctahedronGeometry(.24),glow,x,h+1.5,z,1,1.5,1);crystal.rotation.z=.3;
+  }
+  for(const point of RUINS_COUNTER_PYLONS){
+    part(scene,box,edge,point.x,.18,point.z,1.65,.36,1.65);
+    part(scene,pillar,stone,point.x,1.1,point.z,.8,2,.8);
+    part(scene,new T.OctahedronGeometry(.48),glow,point.x,2.45,point.z,1,1.2,1);
+    const marker=part(scene,new T.RingGeometry(.9,1.12,32),glow,point.x,.045,point.z,1,1,1);marker.rotation.x=-Math.PI/2;
   }
   for(let i=0;i<18;i++){const a=i*2.3999,r=26+(i%4)*2;part(scene,new T.DodecahedronGeometry(1,0),stone,Math.cos(a)*r,.25,Math.sin(a)*r,1.4,.9,1.1)}
   const flame=new T.Group();scene.add(flame);return {flame};
